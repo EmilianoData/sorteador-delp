@@ -595,7 +595,12 @@
       }
       return arr;
     }
-    function cryptoPickNames(names, count) { return cryptoShuffle(names).slice(0, Math.min(count, names.length)); }
+    function cryptoPickNames(names, count, allowRepeat = false) {
+      if (allowRepeat) {
+        return Array.from({ length: count }, () => names[cryptoRandomInt(0, names.length - 1)]);
+      }
+      return cryptoShuffle(names).slice(0, Math.min(count, names.length));
+    }
     function cryptoDivideTeams(participants, teamCount) {
       const shuffled = cryptoShuffle(participants);
       const teams = Array.from({ length: teamCount }, () => []);
@@ -1283,7 +1288,7 @@
     // ===================================================================
     // FULLSCREEN SORTEIO EXPERIENCE
     // ===================================================================
-    function FullscreenSorteio({ names, count, prizeName, onClose, addEntry }) {
+    function FullscreenSorteio({ names, count, prizeName, allowRepeat, onClose, addEntry }) {
       const [phase, setPhase] = useState('countdown'); // countdown | spinning | slowing | revealing | done
       const [countVal, setCountVal] = useState(3);
       const [countExiting, setCountExiting] = useState(false);
@@ -1302,8 +1307,8 @@
 
       // Pre-compute results
       useEffect(() => {
-        finalResultsRef.current = cryptoPickNames(names, count);
-      }, [names, count]);
+        finalResultsRef.current = cryptoPickNames(names, count, allowRepeat);
+      }, [names, count, allowRepeat]);
 
       // ---- COUNTDOWN PHASE ----
       useEffect(() => {
@@ -1376,7 +1381,7 @@
                 setTimeout(() => launchFireworks(), 1200);
                 addEntry({
                   type: 'Nomes',
-                  params: `${names.length} participantes, ${count} sorteado(s)`,
+                  params: `${names.length} participantes, ${count} sorteado(s)${allowRepeat ? ' (com repetição)' : ''}`,
                   result: results.join(', ')
                 });
               }, 500);
@@ -1790,6 +1795,7 @@
       const [prizeName, setPrizeName] = useState('');
       const [lastResults, setLastResults] = useState(null);
       const [lastPrize, setLastPrize] = useState('');
+      const [allowRepeat, setAllowRepeat] = useState(false);
       const [showFullscreen, setShowFullscreen] = useState(false);
 
       const names = useMemo(() => namesList.split('\n').map(n => n.trim()).filter(Boolean), [namesList]);
@@ -1819,6 +1825,7 @@
               names={names}
               count={count}
               prizeName={prizeName}
+              allowRepeat={allowRepeat}
               onClose={handleFullscreenClose}
               addEntry={handleAddEntry}
             />
@@ -1856,6 +1863,21 @@
                       placeholder="Ex: TV 55 polegadas, Vale Presente R$500..."
                       className="input-dark w-full px-4 py-3 text-base"
                       style={{ borderColor: prizeName ? 'rgba(221,143,26,0.3)' : undefined, boxShadow: prizeName ? '0 0 15px rgba(221,143,26,0.08)' : undefined }} />
+                  </div>
+                  <div className="flex items-center justify-between py-2 px-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-barlow font-semibold text-xs text-delp-secondary uppercase tracking-wider">🔄 Permitir Repetição</span>
+                      <span className="text-gray-600 text-xs font-opensans">(mesmo nome pode ganhar mais de uma vez)</span>
+                    </div>
+                    <button onClick={() => setAllowRepeat(v => !v)}
+                      className="relative w-12 h-6 rounded-full transition-all duration-300 flex-shrink-0"
+                      style={{
+                        background: allowRepeat ? 'linear-gradient(135deg, #cc0f10, #dd8f1a)' : 'rgba(255,255,255,0.1)',
+                        boxShadow: allowRepeat ? '0 0 12px rgba(204,15,16,0.3)' : 'none',
+                      }}>
+                      <div className="absolute top-0.5 transition-all duration-300 w-5 h-5 rounded-full bg-white shadow-md"
+                        style={{ left: allowRepeat ? '26px' : '2px' }} />
+                    </button>
                   </div>
                   <Button onClick={handleSort} disabled={names.length === 0} className="w-full" size="lg">
                     🎆 Sortear em Tela Cheia
