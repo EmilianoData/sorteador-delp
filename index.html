@@ -1,0 +1,2603 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sorteador Delp — Ferramenta Interna de Sorteios</title>
+
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='4' fill='%23cc0f10'/><text x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-weight='900' font-size='18' fill='white'>D</text></svg>" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600;700;800;900&family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            delp: {
+              primary: '#cc0f10',
+              'primary-dark': '#a00c0d',
+              'primary-glow': '#ff2a2b',
+              secondary: '#dd8f1a',
+              'secondary-light': '#f5b94e',
+              dark: '#0a0a0a',
+              'dark-card': '#141414',
+              'dark-surface': '#1c1c1c',
+              'bg-light': '#f4f4f4',
+              'text-dark': '#333333',
+              'text-light': '#666666',
+              'footer-bg': '#0a0a0a',
+              border: '#2a2a2a',
+              success: '#28a745',
+            }
+          },
+          fontFamily: {
+            barlow: ['Barlow', 'sans-serif'],
+            opensans: ['Open Sans', 'sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
+
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    :root {
+      --delp-primary: #cc0f10;
+      --delp-primary-dark: #a00c0d;
+      --delp-glow: #ff2a2b;
+      --delp-secondary: #dd8f1a;
+      --delp-dark: #0a0a0a;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Open Sans', sans-serif;
+      background: #0a0a0a;
+      color: #ffffff;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    h1, h2, h3, h4, h5, h6 { font-family: 'Barlow', sans-serif; }
+
+    /* ===== PARTICLE CANVAS ===== */
+    #particles-canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* ===== ANIMATIONS ===== */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(40px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeInScale {
+      from { opacity: 0; transform: scale(0.8); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-12px); }
+    }
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 20px rgba(204,15,16,0.3), 0 0 60px rgba(204,15,16,0.1); }
+      50% { box-shadow: 0 0 40px rgba(204,15,16,0.6), 0 0 100px rgba(204,15,16,0.2); }
+    }
+    @keyframes textGlow {
+      0%, 100% { text-shadow: 0 0 20px rgba(204,15,16,0.5); }
+      50% { text-shadow: 0 0 40px rgba(204,15,16,0.8), 0 0 80px rgba(204,15,16,0.3); }
+    }
+    @keyframes rotateLogo {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    @keyframes pulseLogo {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.15); opacity: 0.8; }
+    }
+    @keyframes countdownPop {
+      0% { transform: scale(0.3); opacity: 0; }
+      50% { transform: scale(1.2); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    @keyframes confettiFall {
+      0% { transform: translateY(-10px) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+    }
+    @keyframes slideInRight {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes borderRotate {
+      0% { --angle: 0deg; }
+      100% { --angle: 360deg; }
+    }
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    @keyframes ripple {
+      0% { transform: scale(0); opacity: 0.6; }
+      100% { transform: scale(4); opacity: 0; }
+    }
+    @keyframes slotBlur {
+      0%, 100% { filter: blur(0); }
+      50% { filter: blur(2px); }
+    }
+    @keyframes resultReveal {
+      0% { clip-path: inset(50% 50% 50% 50%); }
+      100% { clip-path: inset(0 0 0 0); }
+    }
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .animate-fade-in-up { animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+    .animate-fade-in-scale { animation: fadeInScale 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+    .animate-float { animation: float 4s ease-in-out infinite; }
+    .animate-pulse-glow { animation: pulseGlow 2s ease-in-out infinite; }
+    .animate-text-glow { animation: textGlow 2s ease-in-out infinite; }
+    .animate-result-reveal { animation: resultReveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+    .delay-100 { animation-delay: 100ms; }
+    .delay-200 { animation-delay: 200ms; }
+    .delay-300 { animation-delay: 300ms; }
+    .delay-400 { animation-delay: 400ms; }
+    .delay-500 { animation-delay: 500ms; }
+
+    /* ===== GLASSMORPHISM CARDS ===== */
+    .glass-card {
+      background: rgba(20, 20, 20, 0.7);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 16px;
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .glass-card:hover {
+      border-color: rgba(204,15,16,0.3);
+      box-shadow: 0 8px 40px rgba(204,15,16,0.1);
+      transform: translateY(-2px);
+    }
+
+    .glass-card-light {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+    }
+
+    /* ===== GRADIENT BORDER ===== */
+    .gradient-border {
+      position: relative;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .gradient-border::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 16px;
+      padding: 1px;
+      background: linear-gradient(135deg, #cc0f10, #dd8f1a, #cc0f10);
+      background-size: 200% 200%;
+      animation: gradientShift 3s ease infinite;
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+    }
+
+    /* ===== RESULT DISPLAY ===== */
+    .result-number {
+      font-family: 'Barlow', sans-serif;
+      font-weight: 900;
+      font-size: 96px;
+      line-height: 1;
+      background: linear-gradient(135deg, #ff2a2b, #cc0f10, #dd8f1a);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 0 30px rgba(204,15,16,0.4));
+    }
+    @media (max-width: 640px) {
+      .result-number { font-size: 56px; }
+    }
+
+    /* ===== BUTTONS ===== */
+    .btn-primary {
+      position: relative;
+      background: linear-gradient(135deg, #cc0f10, #a00c0d);
+      color: white;
+      font-family: 'Barlow', sans-serif;
+      font-weight: 700;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      overflow: hidden;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(204,15,16,0.4);
+    }
+    .btn-primary:active { transform: translateY(0) scale(0.98); }
+    .btn-primary:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+    .btn-primary .ripple {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.3);
+      animation: ripple 0.6s linear;
+      pointer-events: none;
+    }
+
+    .btn-secondary {
+      background: rgba(255,255,255,0.06);
+      color: #ccc;
+      font-family: 'Barlow', sans-serif;
+      font-weight: 600;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .btn-secondary:hover {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border-color: rgba(255,255,255,0.2);
+    }
+
+    /* ===== INPUTS ===== */
+    .input-dark {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      color: #fff;
+      font-family: 'Open Sans', sans-serif;
+      transition: all 0.3s;
+    }
+    .input-dark:focus {
+      outline: none;
+      border-color: #cc0f10;
+      box-shadow: 0 0 0 3px rgba(204,15,16,0.15), 0 0 20px rgba(204,15,16,0.1);
+      background: rgba(255,255,255,0.06);
+    }
+    .input-dark::placeholder { color: rgba(255,255,255,0.25); }
+
+    /* ===== TOGGLE ===== */
+    .toggle-switch {
+      position: relative;
+      width: 52px; height: 28px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 14px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .toggle-switch.active {
+      background: linear-gradient(135deg, #cc0f10, #a00c0d);
+      box-shadow: 0 0 15px rgba(204,15,16,0.4);
+    }
+    .toggle-switch::after {
+      content: '';
+      position: absolute;
+      width: 24px; height: 24px;
+      background: white;
+      border-radius: 50%;
+      top: 2px; left: 2px;
+      transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .toggle-switch.active::after { transform: translateX(24px); }
+
+    /* ===== NAV TAB ===== */
+    .nav-tab {
+      position: relative;
+      padding: 10px 20px;
+      font-family: 'Barlow', sans-serif;
+      font-weight: 600;
+      font-size: 14px;
+      color: rgba(255,255,255,0.5);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .nav-tab:hover { color: rgba(255,255,255,0.8); background: rgba(255,255,255,0.04); }
+    .nav-tab.active {
+      color: white;
+      background: linear-gradient(135deg, rgba(204,15,16,0.2), rgba(204,15,16,0.05));
+      box-shadow: 0 0 20px rgba(204,15,16,0.15);
+    }
+    .nav-tab.active::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 20%; right: 20%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #cc0f10, transparent);
+      border-radius: 1px;
+    }
+
+    /* ===== COUNTDOWN OVERLAY ===== */
+    .countdown-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(10,10,10,0.95);
+      backdrop-filter: blur(10px);
+    }
+    .countdown-number {
+      font-family: 'Barlow', sans-serif;
+      font-weight: 900;
+      font-size: 200px;
+      background: linear-gradient(135deg, #ff2a2b, #cc0f10);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: countdownPop 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+      filter: drop-shadow(0 0 60px rgba(204,15,16,0.6));
+    }
+    @media (max-width: 640px) { .countdown-number { font-size: 120px; } }
+
+    /* ===== WHEEL ===== */
+    .wheel-pointer-container {
+      filter: drop-shadow(0 4px 12px rgba(204,15,16,0.5));
+    }
+
+    /* ===== SCROLLBAR ===== */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #0a0a0a; }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+    /* ===== CONFETTI ===== */
+    .confetti-piece {
+      position: fixed;
+      width: 10px; height: 10px;
+      z-index: 200;
+      pointer-events: none;
+      animation: confettiFall linear both;
+    }
+
+    /* ===== FIREWORKS CANVAS ===== */
+    #fireworks-canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 150;
+      pointer-events: none;
+    }
+
+    /* ===== COUNTDOWN V2 - EPIC ===== */
+    @keyframes shockwave {
+      0% { transform: scale(0); opacity: 0.8; }
+      100% { transform: scale(3); opacity: 0; }
+    }
+    @keyframes countdownNumberV2 {
+      0% { transform: scale(0.1) rotate(-20deg); opacity: 0; filter: blur(20px); }
+      40% { transform: scale(1.3) rotate(3deg); opacity: 1; filter: blur(0); }
+      60% { transform: scale(0.95) rotate(-1deg); }
+      100% { transform: scale(1) rotate(0deg); opacity: 1; filter: blur(0); }
+    }
+    @keyframes countdownExit {
+      0% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(2.5); opacity: 0; filter: blur(10px); }
+    }
+    @keyframes logoSpin3D {
+      0% { transform: perspective(600px) rotateY(0deg) scale(1); }
+      25% { transform: perspective(600px) rotateY(90deg) scale(1.1); }
+      50% { transform: perspective(600px) rotateY(180deg) scale(1.2); }
+      75% { transform: perspective(600px) rotateY(270deg) scale(1.1); }
+      100% { transform: perspective(600px) rotateY(360deg) scale(1); }
+    }
+    @keyframes goTextReveal {
+      0% { transform: scale(0) rotate(-180deg); opacity: 0; letter-spacing: 30px; }
+      50% { transform: scale(1.4) rotate(10deg); opacity: 1; }
+      100% { transform: scale(1) rotate(0deg); opacity: 1; letter-spacing: 15px; }
+    }
+    @keyframes nameSlotSpin {
+      0% { transform: translateY(100%); opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { transform: translateY(-100%); opacity: 0; }
+    }
+    @keyframes winnerReveal {
+      0% { transform: scale(0) rotate(-10deg); opacity: 0; filter: blur(10px); }
+      60% { transform: scale(1.1) rotate(2deg); filter: blur(0); }
+      100% { transform: scale(1) rotate(0deg); opacity: 1; }
+    }
+    @keyframes winnerGlow {
+      0%, 100% { box-shadow: 0 0 20px rgba(204,15,16,0.3), 0 0 40px rgba(204,15,16,0.1), inset 0 0 20px rgba(204,15,16,0.05); }
+      50% { box-shadow: 0 0 40px rgba(204,15,16,0.6), 0 0 80px rgba(204,15,16,0.2), inset 0 0 30px rgba(204,15,16,0.1); }
+    }
+    @keyframes trophyBounce {
+      0%, 100% { transform: scale(1) rotate(0deg); }
+      25% { transform: scale(1.2) rotate(-5deg); }
+      50% { transform: scale(1.3) rotate(5deg); }
+      75% { transform: scale(1.2) rotate(-3deg); }
+    }
+    @keyframes rankBadgePop {
+      0% { transform: scale(0) rotate(-90deg); }
+      60% { transform: scale(1.3) rotate(10deg); }
+      100% { transform: scale(1) rotate(0deg); }
+    }
+
+    /* ===== SECTION DIVIDER ===== */
+    .section-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(204,15,16,0.3), transparent);
+    }
+
+    /* ===== HISTORY PANEL ===== */
+    .history-panel {
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+  </style>
+</head>
+<body>
+  <canvas id="particles-canvas"></canvas>
+  <div id="root"></div>
+
+  <!-- Particle System -->
+  <script>
+    (function() {
+      const canvas = document.getElementById('particles-canvas');
+      const ctx = canvas.getContext('2d');
+      let particles = [];
+      let w, h;
+
+      function resize() {
+        w = canvas.width = window.innerWidth;
+        h = canvas.height = window.innerHeight;
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      class Particle {
+        constructor() { this.reset(); }
+        reset() {
+          this.x = Math.random() * w;
+          this.y = Math.random() * h;
+          this.size = Math.random() * 2 + 0.5;
+          this.speedX = (Math.random() - 0.5) * 0.3;
+          this.speedY = (Math.random() - 0.5) * 0.3;
+          this.opacity = Math.random() * 0.3 + 0.05;
+          this.color = Math.random() > 0.7 ? '#cc0f10' : '#ffffff';
+        }
+        update() {
+          this.x += this.speedX;
+          this.y += this.speedY;
+          if (this.x < 0 || this.x > w || this.y < 0 || this.y > h) this.reset();
+        }
+        draw() {
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+          ctx.fillStyle = this.color;
+          ctx.globalAlpha = this.opacity;
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+      }
+
+      for (let i = 0; i < 80; i++) particles.push(new Particle());
+
+      function connectParticles() {
+        for (let i = 0; i < particles.length; i++) {
+          for (let j = i + 1; j < particles.length; j++) {
+            const dx = particles[i].x - particles[j].x;
+            const dy = particles[i].y - particles[j].y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 120) {
+              ctx.beginPath();
+              ctx.strokeStyle = `rgba(204,15,16,${0.03 * (1 - dist / 120)})`;
+              ctx.lineWidth = 0.5;
+              ctx.moveTo(particles[i].x, particles[i].y);
+              ctx.lineTo(particles[j].x, particles[j].y);
+              ctx.stroke();
+            }
+          }
+        }
+      }
+
+      function animate() {
+        ctx.clearRect(0, 0, w, h);
+        particles.forEach(p => { p.update(); p.draw(); });
+        connectParticles();
+        requestAnimationFrame(animate);
+      }
+      animate();
+    })();
+  </script>
+
+  <script type="text/babel" data-type="module">
+    const { useState, useEffect, useRef, useCallback, useMemo, createContext, useContext } = React;
+
+    // ===================================================================
+    // CONSTANTS
+    // ===================================================================
+    const DELP_INFO = {
+      name: 'Delp Engenharia Mecânica',
+      slogan: 'Paixão em Fabricar',
+      headquarters: { address: 'Av. das Nações Unidas, 999', district: 'Distrito Industrial', city: 'Vespasiano', state: 'MG', cep: '33201-003', phone: '55 31 2103-7575' },
+      branch: { address: 'Fazenda Saco Dantas s/n', district: 'Distrito Industrial', city: 'São João da Barra', state: 'RJ', cep: '28200-000', phone: '55 22 99912-0353' },
+      social: { linkedin: 'https://www.linkedin.com/company/grupodelp', instagram: 'https://www.instagram.com/delpengenharia/', facebook: 'https://www.facebook.com/GRUPODELP' },
+      copyright: '© 2026 Delp Engenharia Mecânica. Todos os direitos reservados.',
+    };
+
+    const WHEEL_COLORS = ['#cc0f10', '#dd8f1a', '#1c1c1c', '#a00c0d', '#c47a15', '#2d2d2d', '#ff2a2b', '#f5b94e'];
+    const TABS = [
+      { id: 'numeros', label: 'Números', icon: '🎲' },
+      { id: 'nomes', label: 'Nomes', icon: '👤' },
+      { id: 'equipes', label: 'Equipes', icon: '⚡' },
+      { id: 'roleta', label: 'Roleta', icon: '🎯' },
+    ];
+
+    // ===================================================================
+    // CRYPTO-SAFE RANDOM
+    // ===================================================================
+    function cryptoRandomInt(min, max) {
+      const range = max - min + 1;
+      if (range <= 0) return min;
+      const bytesNeeded = Math.ceil(Math.log2(range) / 8) || 1;
+      const maxValid = Math.floor(256 ** bytesNeeded / range) * range - 1;
+      let value;
+      do {
+        const bytes = new Uint8Array(bytesNeeded);
+        crypto.getRandomValues(bytes);
+        value = bytes.reduce((acc, b, i) => acc + b * (256 ** i), 0);
+      } while (value > maxValid);
+      return min + (value % range);
+    }
+    function cryptoRandomNumbers(min, max, count, allowRepeat) {
+      const results = [];
+      if (allowRepeat) {
+        for (let i = 0; i < count; i++) results.push(cryptoRandomInt(min, max));
+      } else {
+        const available = Array.from({ length: max - min + 1 }, (_, i) => min + i);
+        for (let i = 0; i < Math.min(count, available.length); i++) {
+          const idx = cryptoRandomInt(0, available.length - 1);
+          results.push(available[idx]);
+          available.splice(idx, 1);
+        }
+      }
+      return results;
+    }
+    function cryptoShuffle(array) {
+      const arr = [...array];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = cryptoRandomInt(0, i);
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+    function cryptoPickNames(names, count) { return cryptoShuffle(names).slice(0, Math.min(count, names.length)); }
+    function cryptoDivideTeams(participants, teamCount) {
+      const shuffled = cryptoShuffle(participants);
+      const teams = Array.from({ length: teamCount }, () => []);
+      shuffled.forEach((p, i) => teams[i % teamCount].push(p));
+      return teams;
+    }
+
+    // ===================================================================
+    // UTILITIES
+    // ===================================================================
+    async function copyToClipboard(text) {
+      try { await navigator.clipboard.writeText(text); return true; }
+      catch { const ta = document.createElement('textarea'); ta.value = text; ta.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(ta); ta.select(); const ok = document.execCommand('copy'); document.body.removeChild(ta); return ok; }
+    }
+
+    function useHistory() {
+      const KEY = 'sorteador-delp-history';
+      const [history, setHistory] = useState(() => { try { return JSON.parse(sessionStorage.getItem(KEY)) || []; } catch { return []; } });
+      const addEntry = useCallback((entry) => {
+        setHistory(prev => {
+          const updated = [{ ...entry, id: Date.now(), timestamp: new Date().toLocaleTimeString('pt-BR') }, ...prev].slice(0, 50);
+          sessionStorage.setItem(KEY, JSON.stringify(updated));
+          return updated;
+        });
+      }, []);
+      const clearHistory = useCallback(() => { setHistory([]); sessionStorage.removeItem(KEY); }, []);
+      return { history, addEntry, clearHistory };
+    }
+
+    // ===================================================================
+    // FIREWORKS SYSTEM (Canvas-based)
+    // ===================================================================
+    const FireworksEngine = (() => {
+      let canvas, ctx, particles = [], rockets = [], running = false, animId = null;
+      const colors = ['#cc0f10', '#ff2a2b', '#dd8f1a', '#f5b94e', '#ffffff', '#ff6b6b', '#ffd700', '#ff4757'];
+
+      function init() {
+        canvas = document.getElementById('fireworks-canvas');
+        if (!canvas) {
+          canvas = document.createElement('canvas');
+          canvas.id = 'fireworks-canvas';
+          document.body.appendChild(canvas);
+        }
+        ctx = canvas.getContext('2d');
+        resize();
+        window.addEventListener('resize', resize);
+      }
+
+      function resize() {
+        if (canvas) {
+          canvas.width = window.innerWidth;
+          canvas.height = window.innerHeight;
+        }
+      }
+
+      class FireworkParticle {
+        constructor(x, y, color, isTrail = false) {
+          this.x = x; this.y = y;
+          this.color = color;
+          const angle = Math.random() * Math.PI * 2;
+          const speed = isTrail ? (2 + Math.random() * 6) : (1 + Math.random() * 3);
+          this.vx = Math.cos(angle) * speed;
+          this.vy = Math.sin(angle) * speed;
+          this.alpha = 1;
+          this.decay = isTrail ? (0.015 + Math.random() * 0.02) : (0.008 + Math.random() * 0.012);
+          this.size = isTrail ? (1.5 + Math.random() * 3) : (1 + Math.random() * 2);
+          this.gravity = 0.04;
+          this.trail = [];
+          this.maxTrail = isTrail ? 8 : 4;
+        }
+        update() {
+          this.trail.push({ x: this.x, y: this.y, alpha: this.alpha * 0.5 });
+          if (this.trail.length > this.maxTrail) this.trail.shift();
+          this.vy += this.gravity;
+          this.x += this.vx;
+          this.y += this.vy;
+          this.vx *= 0.98;
+          this.vy *= 0.98;
+          this.alpha -= this.decay;
+          this.size *= 0.995;
+        }
+        draw(ctx) {
+          // Trail
+          for (let i = 0; i < this.trail.length; i++) {
+            const t = this.trail[i];
+            ctx.beginPath();
+            ctx.arc(t.x, t.y, this.size * 0.5, 0, Math.PI * 2);
+            ctx.fillStyle = this.color;
+            ctx.globalAlpha = t.alpha * (i / this.trail.length) * 0.3;
+            ctx.fill();
+          }
+          // Main particle
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+          ctx.fillStyle = this.color;
+          ctx.globalAlpha = this.alpha;
+          ctx.fill();
+          // Glow
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.size * 3, 0, Math.PI * 2);
+          const grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size * 3);
+          grad.addColorStop(0, this.color);
+          grad.addColorStop(1, 'transparent');
+          ctx.fillStyle = grad;
+          ctx.globalAlpha = this.alpha * 0.3;
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+      }
+
+      class Rocket {
+        constructor() {
+          this.x = canvas.width * (0.2 + Math.random() * 0.6);
+          this.y = canvas.height;
+          this.targetY = canvas.height * (0.15 + Math.random() * 0.35);
+          this.vy = -(6 + Math.random() * 4);
+          this.alpha = 1;
+          this.color = colors[Math.floor(Math.random() * colors.length)];
+          this.trail = [];
+          this.exploded = false;
+        }
+        update() {
+          this.trail.push({ x: this.x, y: this.y, alpha: 0.8 });
+          if (this.trail.length > 15) this.trail.shift();
+          this.y += this.vy;
+          this.vy *= 0.98;
+          if (this.y <= this.targetY || this.vy > -1) {
+            this.explode();
+            return true;
+          }
+          return false;
+        }
+        explode() {
+          const count = 40 + Math.floor(Math.random() * 40);
+          const color = this.color;
+          for (let i = 0; i < count; i++) {
+            particles.push(new FireworkParticle(this.x, this.y, color, true));
+          }
+          // Secondary ring
+          const color2 = colors[Math.floor(Math.random() * colors.length)];
+          for (let i = 0; i < 15; i++) {
+            particles.push(new FireworkParticle(this.x, this.y, color2, false));
+          }
+        }
+        draw(ctx) {
+          for (let i = 0; i < this.trail.length; i++) {
+            const t = this.trail[i];
+            ctx.beginPath();
+            ctx.arc(t.x, t.y, 1.5, 0, Math.PI * 2);
+            ctx.fillStyle = this.color;
+            ctx.globalAlpha = (i / this.trail.length) * 0.5;
+            ctx.fill();
+          }
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, 2.5, 0, Math.PI * 2);
+          ctx.fillStyle = this.color;
+          ctx.globalAlpha = 1;
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+      }
+
+      function animate() {
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.fillStyle = 'rgba(0,0,0,0.15)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.globalCompositeOperation = 'lighter';
+
+        rockets = rockets.filter(r => {
+          const done = r.update();
+          if (!done) r.draw(ctx);
+          return !done;
+        });
+
+        particles = particles.filter(p => {
+          p.update();
+          if (p.alpha > 0.01) { p.draw(ctx); return true; }
+          return false;
+        });
+
+        if (rockets.length > 0 || particles.length > 0) {
+          animId = requestAnimationFrame(animate);
+        } else {
+          running = false;
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+      }
+
+      function launch(count = 8, staggerMs = 300) {
+        init();
+        for (let i = 0; i < count; i++) {
+          setTimeout(() => {
+            rockets.push(new Rocket());
+            if (!running) { running = true; animate(); }
+          }, i * staggerMs);
+        }
+      }
+
+      return { launch };
+    })();
+
+    function launchFireworks() { FireworksEngine.launch(10, 250); }
+    // Keep confetti as fallback
+    function launchConfetti() { launchFireworks(); }
+
+    // ===================================================================
+    // DELP LOGO COMPONENTS (using real logo images)
+    // ===================================================================
+    // Logo completo (com texto "delp paixão em fabricar") — para header, hero, footer
+    function DelpLogo({ size = 'md', light = false, animate = false }) {
+      const heights = { sm: 36, md: 52, lg: 68, xl: 100 };
+      const h = heights[size] || 52;
+      return (
+        <div className={`inline-flex items-center ${animate ? 'animate-float' : ''}`}
+          style={{ backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: '10px', padding: `${Math.round(h*0.12)}px ${Math.round(h*0.25)}px` }}>
+          <img
+            src="logo-completo.png"
+            alt="Delp — Paixão em Fabricar"
+            style={{ height: `${h}px`, width: 'auto', objectFit: 'contain', display: 'block' }}
+          />
+        </div>
+      );
+    }
+
+    // Logo triângulo (só o ícone dos 3 triângulos) — countdowns, spinners, badges, hub da roleta
+    function DelpLogoMark({ size = 40, spinning = false }) {
+      return (
+        <img
+          src="logo-triangulo.png"
+          alt="Delp"
+          style={{
+            width: `${size}px`,
+            height: `${size}px`,
+            objectFit: 'contain',
+            display: 'block',
+            ...(spinning ? { animation: 'pulseLogo 0.6s ease-in-out infinite' } : {}),
+          }}
+        />
+      );
+    }
+
+    // ===================================================================
+    // COUNTDOWN OVERLAY — EPIC VERSION
+    // ===================================================================
+    function CountdownOverlay({ onComplete, label = 'Sorteando' }) {
+      const [count, setCount] = useState(3);
+      const [phase, setPhase] = useState('counting');
+      const [exiting, setExiting] = useState(false);
+      const shockwaveRef = useRef([]);
+
+      const addShockwave = useCallback(() => {
+        shockwaveRef.current = [...shockwaveRef.current, Date.now()];
+        setTimeout(() => {
+          shockwaveRef.current = shockwaveRef.current.slice(1);
+        }, 800);
+      }, []);
+
+      useEffect(() => {
+        if (phase === 'counting' && count > 0) {
+          addShockwave();
+          const t = setTimeout(() => {
+            setExiting(true);
+            setTimeout(() => { setExiting(false); setCount(c => c - 1); }, 200);
+          }, 700);
+          return () => clearTimeout(t);
+        }
+        if (phase === 'counting' && count === 0) {
+          setPhase('logo');
+          addShockwave();
+          setTimeout(() => { setPhase('done'); onComplete(); }, 1200);
+        }
+      }, [count, phase, onComplete, addShockwave]);
+
+      if (phase === 'done') return null;
+
+      return (
+        <div className="countdown-overlay" style={{ background: 'radial-gradient(ellipse at center, rgba(15,0,0,0.97) 0%, rgba(5,0,0,0.99) 100%)' }}>
+          {/* Shockwave rings */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            {shockwaveRef.current.map(id => (
+              <div key={id} className="absolute rounded-full border-2 border-delp-primary/40"
+                style={{ width: 100, height: 100, animation: 'shockwave 0.8s ease-out forwards' }} />
+            ))}
+          </div>
+
+          {/* Background radial pulse */}
+          <div className="absolute inset-0 pointer-events-none" style={{
+            background: phase === 'logo'
+              ? 'radial-gradient(circle at center, rgba(204,15,16,0.15) 0%, transparent 60%)'
+              : 'radial-gradient(circle at center, rgba(204,15,16,0.08) 0%, transparent 50%)',
+            animation: 'pulseGlow 1s ease-in-out infinite'
+          }} />
+
+          <div className="text-center relative z-10">
+            {phase === 'counting' && count > 0 && (
+              <>
+                <p className="font-barlow font-medium text-sm text-gray-500 mb-4 tracking-[0.3em] uppercase">{label}</p>
+
+                {/* Logo spinning above */}
+                <div className="mb-8 flex justify-center">
+                  <div style={{ animation: 'logoSpin3D 2s ease-in-out infinite' }}>
+                    <DelpLogoMark size={48} />
+                  </div>
+                </div>
+
+                {/* Number */}
+                <div key={count} style={{
+                  fontFamily: 'Barlow, sans-serif',
+                  fontWeight: 900,
+                  fontSize: 'min(250px, 40vw)',
+                  lineHeight: 1,
+                  background: 'linear-gradient(135deg, #ff2a2b, #cc0f10, #dd8f1a)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                  filter: 'drop-shadow(0 0 80px rgba(204,15,16,0.6))',
+                  animation: exiting ? 'countdownExit 0.2s ease-in forwards' : 'countdownNumberV2 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                }}>
+                  {count}
+                </div>
+
+                {/* Progress dots */}
+                <div className="flex justify-center gap-3 mt-8">
+                  {[3,2,1].map(n => (
+                    <div key={n} className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                      n >= count ? 'bg-delp-primary scale-125 shadow-lg shadow-delp-primary/50' : 'bg-white/10'
+                    }`} />
+                  ))}
+                </div>
+              </>
+            )}
+
+            {phase === 'logo' && (
+              <div className="relative">
+                {/* Large spinning logo */}
+                <div className="flex justify-center mb-6" style={{ animation: 'logoSpin3D 0.8s ease-out forwards' }}>
+                  <DelpLogoMark size={120} />
+                </div>
+                {/* GO! text */}
+                <p style={{
+                  fontFamily: 'Barlow, sans-serif',
+                  fontWeight: 900,
+                  fontSize: '72px',
+                  color: '#cc0f10',
+                  letterSpacing: '15px',
+                  textShadow: '0 0 60px rgba(204,15,16,0.8), 0 0 120px rgba(204,15,16,0.4)',
+                  animation: 'goTextReveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                }}>
+                  GO!
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ===================================================================
+    // UI COMPONENTS
+    // ===================================================================
+    function Button({ children, onClick, variant = 'primary', size = 'md', className = '', disabled = false, ...props }) {
+      const ref = useRef(null);
+      const handleClick = (e) => {
+        if (disabled) return;
+        // Ripple effect
+        if (variant === 'primary' && ref.current) {
+          const rect = ref.current.getBoundingClientRect();
+          const ripple = document.createElement('span');
+          ripple.className = 'ripple';
+          ripple.style.left = `${e.clientX - rect.left}px`;
+          ripple.style.top = `${e.clientY - rect.top}px`;
+          ref.current.appendChild(ripple);
+          setTimeout(() => ripple.remove(), 600);
+        }
+        onClick?.(e);
+      };
+      const sizes = { sm: 'px-4 py-2.5 text-xs', md: 'px-7 py-3.5 text-sm', lg: 'px-10 py-4.5 text-base' };
+      const cls = variant === 'primary' ? 'btn-primary' : 'btn-secondary';
+      return (
+        <button ref={ref} onClick={handleClick} disabled={disabled}
+          className={`${cls} ${sizes[size]} ${className}`} {...props}>
+          {children}
+        </button>
+      );
+    }
+
+    function InputField({ label, id, type = 'number', value, onChange, min, max, placeholder, ...props }) {
+      return (
+        <div className="flex flex-col gap-2">
+          <label htmlFor={id} className="font-barlow font-semibold text-xs text-gray-400 uppercase tracking-wider">{label}</label>
+          <input id={id} type={type} value={value} onChange={onChange} min={min} max={max}
+            placeholder={placeholder}
+            className="input-dark w-full px-4 py-3 text-base" {...props} />
+        </div>
+      );
+    }
+
+    function TextAreaField({ label, id, value, onChange, placeholder, rows = 6 }) {
+      return (
+        <div className="flex flex-col gap-2">
+          <label htmlFor={id} className="font-barlow font-semibold text-xs text-gray-400 uppercase tracking-wider">{label}</label>
+          <textarea id={id} value={value} onChange={onChange} placeholder={placeholder} rows={rows}
+            className="input-dark w-full px-4 py-3 text-base resize-y" />
+        </div>
+      );
+    }
+
+    function Toggle({ label, checked, onChange, id }) {
+      return (
+        <div className="flex items-center gap-3">
+          <button id={id} role="switch" aria-checked={checked} aria-label={label}
+            onClick={() => onChange(!checked)} className={`toggle-switch ${checked ? 'active' : ''}`} />
+          <label htmlFor={id} className="font-opensans text-sm text-gray-300 cursor-pointer" onClick={() => onChange(!checked)}>{label}</label>
+        </div>
+      );
+    }
+
+    function SectionTitle({ children, subtitle, icon }) {
+      return (
+        <div className="text-center mb-10">
+          {icon && <div className="text-4xl mb-3">{icon}</div>}
+          <h2 className="font-barlow font-black text-3xl md:text-5xl text-white tracking-tight">{children}</h2>
+          {subtitle && <p className="font-opensans text-gray-500 mt-3 text-base max-w-lg mx-auto">{subtitle}</p>}
+          <div className="w-20 h-1 bg-gradient-to-r from-delp-primary to-delp-secondary rounded-full mx-auto mt-5" />
+        </div>
+      );
+    }
+
+    function CopyButton({ text }) {
+      const [copied, setCopied] = useState(false);
+      const handleCopy = async () => {
+        const ok = await copyToClipboard(text);
+        if (ok) { setCopied(true); setTimeout(() => setCopied(false), 2000); }
+      };
+      return (
+        <Button variant="secondary" size="sm" onClick={handleCopy} aria-label="Copiar resultado">
+          {copied ? '✓ Copiado!' : '📋 Copiar'}
+        </Button>
+      );
+    }
+
+    // ===================================================================
+    // HEADER
+    // ===================================================================
+    function Header({ activeTab, onTabChange, onToggleHistory }) {
+      const [scrolled, setScrolled] = useState(false);
+      const [menuOpen, setMenuOpen] = useState(false);
+
+      useEffect(() => {
+        const handler = () => setScrolled(window.scrollY > 20);
+        window.addEventListener('scroll', handler, { passive: true });
+        return () => window.removeEventListener('scroll', handler);
+      }, []);
+
+      return (
+        <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+          scrolled ? 'bg-delp-dark/90 backdrop-blur-xl shadow-lg shadow-black/20' : 'bg-transparent'
+        }`}>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16 md:h-20">
+              <DelpLogo size="sm" light />
+
+              <nav className="hidden md:flex items-center gap-1" aria-label="Módulos">
+                {TABS.map(tab => (
+                  <button key={tab.id} onClick={() => onTabChange(tab.id)}
+                    className={`nav-tab ${activeTab === tab.id ? 'active' : ''}`}
+                    aria-current={activeTab === tab.id ? 'page' : undefined}>
+                    <span className="mr-1.5">{tab.icon}</span>{tab.label}
+                  </button>
+                ))}
+                <button onClick={onToggleHistory}
+                  className="nav-tab ml-3 !text-delp-secondary hover:!text-delp-secondary-light"
+                  aria-label="Histórico">
+                  🕐 Histórico
+                </button>
+              </nav>
+
+              <button className="md:hidden flex flex-col gap-1.5 p-2 cursor-pointer z-50"
+                onClick={() => setMenuOpen(!menuOpen)} aria-label="Menu" aria-expanded={menuOpen}>
+                <span className={`w-6 h-0.5 bg-white transition-all duration-300 ${menuOpen ? 'rotate-45 translate-y-2' : ''}`} />
+                <span className={`w-6 h-0.5 bg-white transition-all duration-300 ${menuOpen ? 'opacity-0' : ''}`} />
+                <span className={`w-6 h-0.5 bg-white transition-all duration-300 ${menuOpen ? '-rotate-45 -translate-y-2' : ''}`} />
+              </button>
+            </div>
+          </div>
+
+          {menuOpen && (
+            <div className="md:hidden fixed inset-0 top-16 z-40 bg-black/80 backdrop-blur-lg" onClick={() => setMenuOpen(false)}>
+              <nav className="p-6 space-y-2" onClick={e => e.stopPropagation()}>
+                {TABS.map((tab, i) => (
+                  <button key={tab.id} onClick={() => { onTabChange(tab.id); setMenuOpen(false); }}
+                    className={`w-full text-left font-barlow font-bold text-lg px-5 py-4 rounded-xl transition-all cursor-pointer animate-fade-in-up delay-${(i+1)*100} ${
+                      activeTab === tab.id ? 'bg-delp-primary/20 text-white' : 'text-gray-300 hover:bg-white/5'
+                    }`}>
+                    <span className="mr-3 text-xl">{tab.icon}</span>{tab.label}
+                  </button>
+                ))}
+                <button onClick={() => { onToggleHistory(); setMenuOpen(false); }}
+                  className="w-full text-left font-barlow font-bold text-lg px-5 py-4 rounded-xl text-delp-secondary hover:bg-delp-secondary/10 transition-all cursor-pointer animate-fade-in-up delay-500">
+                  🕐 Histórico
+                </button>
+              </nav>
+            </div>
+          )}
+        </header>
+      );
+    }
+
+    // ===================================================================
+    // HERO SECTION
+    // ===================================================================
+    function HeroSection({ onStart }) {
+      return (
+        <section className="relative min-h-[90vh] flex items-center justify-center px-4 pt-20">
+          {/* Radial glow background */}
+          <div className="absolute inset-0 pointer-events-none"
+            style={{ background: 'radial-gradient(ellipse 60% 50% at 50% 40%, rgba(204,15,16,0.08) 0%, transparent 70%)' }} />
+
+          <div className="relative z-10 text-center max-w-4xl mx-auto">
+            <div className="animate-fade-in-up">
+              <div className="flex justify-center mb-8">
+                <DelpLogo size="xl" light animate />
+              </div>
+            </div>
+
+            <h1 className="animate-fade-in-up delay-200 font-barlow font-black text-5xl md:text-7xl lg:text-8xl text-white leading-none tracking-tight">
+              SORTEADOR
+              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-delp-primary via-delp-primary-glow to-delp-secondary animate-text-glow">
+                DELP
+              </span>
+            </h1>
+
+            <p className="animate-fade-in-up delay-300 font-opensans text-gray-400 text-lg md:text-xl mt-6 max-w-xl mx-auto leading-relaxed">
+              Ferramenta interna de sorteios com segurança criptográfica e a identidade visual da Delp.
+            </p>
+
+            <div className="animate-fade-in-up delay-400 mt-10 flex flex-col sm:flex-row gap-4 justify-center">
+              <Button size="lg" onClick={onStart} className="text-base">
+                🎲 Começar a Sortear
+              </Button>
+              <Button variant="secondary" size="lg" onClick={() => document.getElementById('numeros')?.scrollIntoView({ behavior: 'smooth' })}
+                className="text-base">
+                Explorar Módulos
+              </Button>
+            </div>
+
+            <div className="animate-fade-in-up delay-500 flex flex-wrap justify-center gap-6 mt-14 text-sm text-gray-500">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                Criptograficamente seguro
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 bg-delp-secondary rounded-full animate-pulse" />
+                100% offline
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 bg-delp-primary rounded-full animate-pulse" />
+                Zero rastreamento
+              </div>
+            </div>
+          </div>
+
+          {/* Scroll indicator */}
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-float">
+            <div className="w-6 h-10 border-2 border-white/20 rounded-full flex items-start justify-center p-1.5">
+              <div className="w-1.5 h-3 bg-white/40 rounded-full animate-pulse" />
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    // ===================================================================
+    // SORTEIO DE NÚMEROS
+    // ===================================================================
+    function NumerosSorteio({ addEntry }) {
+      const [min, setMin] = useState(1);
+      const [max, setMax] = useState(100);
+      const [count, setCount] = useState(1);
+      const [allowRepeat, setAllowRepeat] = useState(false);
+      const [results, setResults] = useState(null);
+      const [animating, setAnimating] = useState(false);
+      const [displayNumbers, setDisplayNumbers] = useState([]);
+      const [showCountdown, setShowCountdown] = useState(false);
+      const animRef = useRef(null);
+
+      const runSort = useCallback(() => {
+        if (min > max) return;
+        const maxPossible = allowRepeat ? Infinity : (max - min + 1);
+        const actualCount = Math.min(count, maxPossible);
+        if (actualCount <= 0) return;
+
+        setAnimating(true);
+        setResults(null);
+        const finalResults = cryptoRandomNumbers(min, max, actualCount, allowRepeat);
+        let frame = 0;
+        const totalFrames = 35;
+
+        const animate = () => {
+          if (frame < totalFrames) {
+            setDisplayNumbers(Array.from({ length: actualCount }, () => cryptoRandomInt(min, max)));
+            frame++;
+            animRef.current = setTimeout(animate, 25 + (frame / totalFrames) * 80);
+          } else {
+            setDisplayNumbers(finalResults);
+            setResults(finalResults);
+            setAnimating(false);
+            launchConfetti();
+            addEntry({ type: 'Números', params: `${min}–${max}, ${actualCount}x${allowRepeat ? ' (rep.)' : ''}`, result: finalResults.join(', ') });
+          }
+        };
+        animate();
+      }, [min, max, count, allowRepeat, addEntry]);
+
+      const handleSort = () => { setShowCountdown(true); };
+
+      useEffect(() => () => clearTimeout(animRef.current), []);
+
+      return (
+        <section className="relative py-20 md:py-28 px-4" id="numeros">
+          {showCountdown && <CountdownOverlay onComplete={() => { setShowCountdown(false); runSort(); }} label="Sorteando Números" />}
+
+          <div className="max-w-6xl mx-auto relative z-10">
+            <SectionTitle icon="🎲" subtitle="Defina o intervalo e sorteie números com aleatoriedade criptográfica">
+              Sorteio de Números
+            </SectionTitle>
+
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+              {/* Config */}
+              <div className="lg:col-span-2 glass-card p-6 md:p-8 animate-fade-in-up">
+                <h3 className="font-barlow font-bold text-lg text-white mb-6 flex items-center gap-2">
+                  <span className="w-8 h-8 bg-delp-primary/20 rounded-lg flex items-center justify-center text-sm">⚙️</span>
+                  Configuração
+                </h3>
+                <div className="space-y-5">
+                  <div className="grid grid-cols-2 gap-4">
+                    <InputField label="Mínimo" id="num-min" value={min} onChange={e => setMin(Number(e.target.value))} />
+                    <InputField label="Máximo" id="num-max" value={max} onChange={e => setMax(Number(e.target.value))} />
+                  </div>
+                  <InputField label="Quantidade" id="num-count" value={count} onChange={e => setCount(Math.max(1, Number(e.target.value)))} min={1} />
+                  <Toggle label="Permitir repetição" checked={allowRepeat} onChange={setAllowRepeat} id="num-repeat" />
+                  <Button onClick={handleSort} disabled={animating || min > max} className="w-full mt-3" size="lg">
+                    {animating ? '⏳ Sorteando...' : '🎲 Sortear Números'}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Result */}
+              <div className={`lg:col-span-3 glass-card p-6 md:p-8 flex flex-col items-center justify-center min-h-[350px] animate-fade-in-up delay-200 ${results ? 'animate-pulse-glow' : ''}`}>
+                <h3 className="font-barlow font-bold text-lg text-white mb-6 flex items-center gap-2">
+                  <span className="w-8 h-8 bg-delp-secondary/20 rounded-lg flex items-center justify-center text-sm">🏆</span>
+                  Resultado
+                </h3>
+
+                {(displayNumbers.length > 0 || results) ? (
+                  <div className="text-center">
+                    <div className={`flex flex-wrap justify-center gap-4 ${results ? 'animate-result-reveal' : ''}`}>
+                      {(results || displayNumbers).map((n, i) => (
+                        <span key={i} className={`result-number ${animating ? '' : 'animate-fade-in-scale'}`}
+                          style={{ animationDelay: `${i * 100}ms` }}>{n}</span>
+                      ))}
+                    </div>
+                    {results && (
+                      <div className="flex gap-3 mt-8 justify-center animate-fade-in-up delay-300">
+                        <Button onClick={handleSort}>🔄 Sortear Novamente</Button>
+                        <CopyButton text={results.join(', ')} />
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <div className="w-24 h-24 mx-auto mb-4 rounded-2xl bg-white/5 flex items-center justify-center">
+                      <span className="text-4xl opacity-30">🎲</span>
+                    </div>
+                    <p className="text-gray-500">Configure e clique em Sortear</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    // ===================================================================
+    // FULLSCREEN SORTEIO EXPERIENCE
+    // ===================================================================
+    function FullscreenSorteio({ names, count, prizeName, onClose, addEntry }) {
+      const [phase, setPhase] = useState('countdown'); // countdown | spinning | slowing | revealing | done
+      const [countVal, setCountVal] = useState(3);
+      const [countExiting, setCountExiting] = useState(false);
+      const [slotNames, setSlotNames] = useState([]);
+      const [results, setResults] = useState(null);
+      const [revealIndex, setRevealIndex] = useState(-1);
+      const [participantHighlight, setParticipantHighlight] = useState(-1);
+      const animRef = useRef(null);
+      const finalResultsRef = useRef(null);
+
+      // Lock body scroll
+      useEffect(() => {
+        document.body.style.overflow = 'hidden';
+        return () => { document.body.style.overflow = ''; };
+      }, []);
+
+      // Pre-compute results
+      useEffect(() => {
+        finalResultsRef.current = cryptoPickNames(names, count);
+      }, [names, count]);
+
+      // ---- COUNTDOWN PHASE ----
+      useEffect(() => {
+        if (phase !== 'countdown') return;
+        if (countVal > 0) {
+          const t = setTimeout(() => {
+            setCountExiting(true);
+            setTimeout(() => { setCountExiting(false); setCountVal(c => c - 1); }, 250);
+          }, 800);
+          return () => clearTimeout(t);
+        }
+        // countVal === 0 → show GO then start spinning
+        const t = setTimeout(() => setPhase('spinning'), 1000);
+        return () => clearTimeout(t);
+      }, [countVal, phase]);
+
+      // ---- SPINNING PHASE ----
+      useEffect(() => {
+        if (phase !== 'spinning') return;
+        let frame = 0;
+        let hlIdx = 0;
+        const spin = () => {
+          setSlotNames(Array.from({ length: 5 }, () => names[cryptoRandomInt(0, names.length - 1)]));
+          hlIdx = (hlIdx + 1) % names.length;
+          setParticipantHighlight(hlIdx);
+          frame++;
+          if (frame < 50) {
+            animRef.current = setTimeout(spin, 45);
+          } else {
+            setPhase('slowing');
+          }
+        };
+        spin();
+        return () => clearTimeout(animRef.current);
+      }, [phase, names]);
+
+      // ---- SLOWING PHASE ----
+      useEffect(() => {
+        if (phase !== 'slowing') return;
+        let frame = 0;
+        let speed = 60;
+        const slow = () => {
+          setSlotNames(Array.from({ length: 5 }, () => names[cryptoRandomInt(0, names.length - 1)]));
+          setParticipantHighlight(cryptoRandomInt(0, names.length - 1));
+          frame++;
+          speed = 60 + frame * frame * 3;
+          if (frame < 10) {
+            animRef.current = setTimeout(slow, speed);
+          } else {
+            setPhase('revealing');
+            setResults(finalResultsRef.current);
+            setSlotNames([]);
+          }
+        };
+        slow();
+        return () => clearTimeout(animRef.current);
+      }, [phase, names]);
+
+      // ---- REVEALING PHASE ----
+      useEffect(() => {
+        if (phase !== 'revealing' || !results) return;
+        results.forEach((_, i) => {
+          setTimeout(() => {
+            setRevealIndex(i);
+            if (i === results.length - 1) {
+              setTimeout(() => {
+                setPhase('done');
+                launchFireworks();
+                // Second wave of fireworks
+                setTimeout(() => launchFireworks(), 1200);
+                addEntry({
+                  type: 'Nomes',
+                  params: `${names.length} participantes, ${count} sorteado(s)`,
+                  result: results.join(', ')
+                });
+              }, 500);
+            }
+          }, (i + 1) * 800);
+        });
+      }, [phase, results, names.length, count, addEntry]);
+
+      const rankColors = ['from-yellow-400 to-yellow-600', 'from-gray-300 to-gray-500', 'from-amber-600 to-amber-800'];
+      const rankEmojis = ['🥇', '🥈', '🥉'];
+
+      return (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 100,
+          background: 'radial-gradient(ellipse at center, #0f0505 0%, #050000 50%, #000 100%)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          overflow: 'hidden',
+        }}>
+          {/* Animated grid background */}
+          <div style={{
+            position: 'absolute', inset: 0, opacity: 0.03,
+            backgroundImage: 'linear-gradient(rgba(204,15,16,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(204,15,16,0.3) 1px, transparent 1px)',
+            backgroundSize: '60px 60px',
+            animation: 'gradientShift 8s ease infinite',
+          }} />
+
+          {/* Radial glow */}
+          <div style={{
+            position: 'absolute', inset: 0, pointerEvents: 'none',
+            background: phase === 'revealing' || phase === 'done'
+              ? 'radial-gradient(ellipse 50% 50% at 50% 50%, rgba(204,15,16,0.12) 0%, transparent 70%)'
+              : 'radial-gradient(ellipse 40% 40% at 50% 50%, rgba(204,15,16,0.06) 0%, transparent 60%)',
+            transition: 'all 1s',
+          }} />
+
+          {/* X Close Button */}
+          <button onClick={onClose} style={{
+            position: 'absolute', top: 24, right: 24, zIndex: 110,
+            width: 48, height: 48, borderRadius: 12,
+            background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+            color: 'rgba(255,255,255,0.5)', fontSize: 24, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'all 0.3s', fontFamily: 'Barlow, sans-serif',
+            backdropFilter: 'blur(10px)',
+          }}
+            onMouseOver={e => { e.target.style.background = 'rgba(204,15,16,0.2)'; e.target.style.color = '#fff'; e.target.style.borderColor = 'rgba(204,15,16,0.5)'; }}
+            onMouseOut={e => { e.target.style.background = 'rgba(255,255,255,0.06)'; e.target.style.color = 'rgba(255,255,255,0.5)'; e.target.style.borderColor = 'rgba(255,255,255,0.1)'; }}
+            aria-label="Fechar sorteio">
+            ✕
+          </button>
+
+          {/* Top Logo */}
+          <div style={{ position: 'absolute', top: 24, left: 24, zIndex: 110 }}>
+            <DelpLogoMark size={36} />
+          </div>
+
+          {/* Info badge */}
+          <div style={{
+            position: 'absolute', top: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 110,
+            padding: '6px 20px', borderRadius: 20,
+            background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+            fontFamily: 'Barlow, sans-serif', fontSize: 12, fontWeight: 600,
+            color: 'rgba(255,255,255,0.4)', letterSpacing: '0.15em', textTransform: 'uppercase',
+          }}>
+            {prizeName ? `🎁 ${prizeName} · ` : ''}{names.length} participantes · {count} vaga{count > 1 ? 's' : ''}
+          </div>
+
+          {/* === MAIN CONTENT === */}
+          <div style={{
+            position: 'relative', zIndex: 10, textAlign: 'center', width: '100%',
+            maxWidth: phase === 'revealing' || phase === 'done' ? 1100 : 800,
+            padding: '0 24px',
+            maxHeight: '100vh', overflowY: 'auto', overflowX: 'hidden',
+            paddingTop: 80, paddingBottom: 60,
+            scrollbarWidth: 'thin', scrollbarColor: '#333 transparent',
+            transition: 'max-width 0.5s ease',
+          }}>
+
+            {/* ---- COUNTDOWN ---- */}
+            {phase === 'countdown' && (
+              <>
+                <p style={{
+                  fontFamily: 'Barlow, sans-serif', fontWeight: 500, fontSize: 14,
+                  color: 'rgba(255,255,255,0.3)', letterSpacing: '0.4em', textTransform: 'uppercase', marginBottom: prizeName ? 8 : 16,
+                }}>Sorteio de Nomes</p>
+                {prizeName && (
+                  <p style={{
+                    fontFamily: 'Barlow, sans-serif', fontWeight: 700, fontSize: 20,
+                    color: '#dd8f1a', marginBottom: 16, letterSpacing: '0.05em',
+                    textShadow: '0 0 30px rgba(221,143,26,0.4)',
+                  }}>🎁 {prizeName}</p>
+                )}
+
+                <div style={{ marginBottom: 32, display: 'flex', justifyContent: 'center' }}>
+                  <div style={{ animation: 'logoSpin3D 2.5s ease-in-out infinite' }}>
+                    <DelpLogoMark size={64} />
+                  </div>
+                </div>
+
+                {countVal > 0 ? (
+                  <div key={countVal} style={{
+                    fontFamily: 'Barlow, sans-serif', fontWeight: 900,
+                    fontSize: 'min(280px, 45vw)', lineHeight: 1,
+                    background: 'linear-gradient(135deg, #ff2a2b, #cc0f10, #dd8f1a)',
+                    WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+                    filter: 'drop-shadow(0 0 100px rgba(204,15,16,0.7))',
+                    animation: countExiting ? 'countdownExit 0.25s ease-in forwards' : 'countdownNumberV2 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                  }}>
+                    {countVal}
+                  </div>
+                ) : (
+                  <div style={{
+                    fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 'min(120px, 20vw)',
+                    color: '#cc0f10', letterSpacing: '0.3em',
+                    textShadow: '0 0 80px rgba(204,15,16,0.8), 0 0 160px rgba(204,15,16,0.4)',
+                    animation: 'goTextReveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                  }}>GO!</div>
+                )}
+
+                {/* Progress dots */}
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginTop: 40 }}>
+                  {[3,2,1].map(n => (
+                    <div key={n} style={{
+                      width: 12, height: 12, borderRadius: '50%', transition: 'all 0.3s',
+                      background: n >= countVal ? '#cc0f10' : 'rgba(255,255,255,0.08)',
+                      boxShadow: n >= countVal ? '0 0 15px rgba(204,15,16,0.6)' : 'none',
+                      transform: n >= countVal ? 'scale(1.3)' : 'scale(1)',
+                    }} />
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* ---- SPINNING / SLOWING ---- */}
+            {(phase === 'spinning' || phase === 'slowing') && (
+              <>
+                <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'center' }}>
+                  <div style={{ animation: 'logoSpin3D 0.8s linear infinite' }}>
+                    <DelpLogoMark size={56} />
+                  </div>
+                </div>
+                <p style={{
+                  fontFamily: 'Barlow, sans-serif', fontWeight: 600, fontSize: 13,
+                  color: 'rgba(255,255,255,0.4)', letterSpacing: '0.3em', textTransform: 'uppercase', marginBottom: 32,
+                }}>
+                  {phase === 'spinning' ? 'Embaralhando participantes...' : 'Finalizando sorteio...'}
+                </p>
+                {prizeName && (
+                  <p style={{
+                    fontFamily: 'Barlow, sans-serif', fontWeight: 700, fontSize: 16,
+                    color: '#dd8f1a', marginBottom: 24, letterSpacing: '0.05em',
+                    textShadow: '0 0 20px rgba(221,143,26,0.3)',
+                    animation: 'textGlow 2s ease-in-out infinite',
+                  }}>🎁 Prêmio: {prizeName}</p>
+                )}
+
+                {/* Slot Machine — Large centered */}
+                <div style={{
+                  position: 'relative', overflow: 'hidden', borderRadius: 20,
+                  background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(204,15,16,0.15)',
+                  padding: '20px 40px', maxWidth: 500, margin: '0 auto',
+                  boxShadow: 'inset 0 0 60px rgba(204,15,16,0.08), 0 0 40px rgba(204,15,16,0.05)',
+                }}>
+                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 40, background: 'linear-gradient(to bottom, rgba(0,0,0,0.9), transparent)', zIndex: 2 }} />
+                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 40, background: 'linear-gradient(to top, rgba(0,0,0,0.9), transparent)', zIndex: 2 }} />
+
+                  {/* Center highlight line */}
+                  <div style={{ position: 'absolute', top: '50%', left: 16, right: 16, transform: 'translateY(-50%)', height: 52, borderRadius: 10, border: '1px solid rgba(204,15,16,0.3)', background: 'rgba(204,15,16,0.05)', zIndex: 1 }} />
+
+                  {slotNames.map((name, i) => (
+                    <div key={`${name}-${i}-${Date.now()}`} style={{
+                      fontFamily: 'Barlow, sans-serif', fontWeight: 700,
+                      fontSize: i === 2 ? 32 : 22, textAlign: 'center', padding: '8px 0',
+                      color: i === 2 ? '#ffffff' : `rgba(255,255,255,${0.08 + Math.abs(2-i)*0.03})`,
+                      textShadow: i === 2 ? '0 0 30px rgba(204,15,16,0.6)' : 'none',
+                      position: 'relative', zIndex: 3,
+                      animation: 'nameSlotSpin 0.12s ease-out',
+                    }}>
+                      {name}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Scrolling participant strip */}
+                <div style={{
+                  marginTop: 32, display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 8, maxWidth: 600, marginLeft: 'auto', marginRight: 'auto',
+                }}>
+                  {names.slice(0, 20).map((name, i) => (
+                    <span key={i} style={{
+                      fontFamily: 'Barlow, sans-serif', fontSize: 11, fontWeight: 500,
+                      padding: '4px 10px', borderRadius: 6,
+                      background: i === participantHighlight ? 'rgba(204,15,16,0.2)' : 'rgba(255,255,255,0.03)',
+                      border: i === participantHighlight ? '1px solid rgba(204,15,16,0.4)' : '1px solid rgba(255,255,255,0.04)',
+                      color: i === participantHighlight ? '#ff2a2b' : 'rgba(255,255,255,0.2)',
+                      transition: 'all 0.15s',
+                    }}>
+                      {name}
+                    </span>
+                  ))}
+                  {names.length > 20 && (
+                    <span style={{ fontFamily: 'Barlow, sans-serif', fontSize: 11, color: 'rgba(255,255,255,0.15)', padding: '4px 10px' }}>
+                      +{names.length - 20} mais
+                    </span>
+                  )}
+                </div>
+
+                {/* Speed indicator bar */}
+                <div style={{ marginTop: 24, display: 'flex', justifyContent: 'center', gap: 3 }}>
+                  {[...Array(8)].map((_, i) => (
+                    <div key={i} style={{
+                      height: 3, borderRadius: 2, transition: 'all 0.3s',
+                      width: phase === 'slowing' ? `${6 + i * 2}px` : 16,
+                      backgroundColor: phase === 'slowing'
+                        ? `rgba(221,143,26,${0.2 + i * 0.1})`
+                        : `rgba(204,15,16,${0.3 + i * 0.08})`,
+                    }} />
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* ---- REVEALING ---- */}
+            {(phase === 'revealing' || phase === 'done') && results && (() => {
+              const isMany = results.length > 3;
+              const isTon = results.length > 6;
+
+              return (
+              <>
+                {/* Prize banner */}
+                {prizeName && (
+                  <div style={{
+                    marginBottom: 20, padding: '16px 32px', borderRadius: 16,
+                    background: 'linear-gradient(135deg, rgba(221,143,26,0.12), rgba(204,15,16,0.08), rgba(221,143,26,0.12))',
+                    border: '1px solid rgba(221,143,26,0.25)',
+                    boxShadow: '0 0 50px rgba(221,143,26,0.1), inset 0 0 30px rgba(221,143,26,0.05)',
+                    animation: 'fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both, winnerGlow 3s ease-in-out infinite',
+                    maxWidth: 500, margin: '0 auto 20px',
+                  }}>
+                    <p style={{
+                      fontFamily: 'Barlow, sans-serif', fontWeight: 600, fontSize: 11,
+                      color: 'rgba(221,143,26,0.7)', letterSpacing: '0.3em', textTransform: 'uppercase', marginBottom: 6,
+                    }}>Prêmio</p>
+                    <p style={{
+                      fontFamily: 'Barlow, sans-serif', fontWeight: 900,
+                      fontSize: prizeName.length > 30 ? 22 : 30,
+                      color: '#fff', lineHeight: 1.2,
+                      textShadow: '0 0 40px rgba(221,143,26,0.4)',
+                    }}>
+                      🎁 {prizeName}
+                    </p>
+                  </div>
+                )}
+
+                <div style={{ marginBottom: 8, animation: 'trophyBounce 1s ease-in-out' }}>
+                  <span style={{ fontSize: isTon ? 48 : 64 }}>🏆</span>
+                </div>
+                <p style={{
+                  fontFamily: 'Barlow, sans-serif', fontWeight: 900, fontSize: 14,
+                  color: '#dd8f1a', letterSpacing: '0.5em', textTransform: 'uppercase', marginBottom: 24,
+                }}>
+                  {results.length > 1 ? `${results.length} Vencedores` : 'Vencedor'}
+                </p>
+
+                {/* === ADAPTIVE GRID LAYOUT === */}
+                <div style={{
+                  display: isMany ? 'grid' : 'flex',
+                  flexDirection: isMany ? undefined : 'column',
+                  gridTemplateColumns: isTon
+                    ? 'repeat(auto-fill, minmax(280px, 1fr))'
+                    : isMany ? 'repeat(auto-fill, minmax(320px, 1fr))' : undefined,
+                  gap: isMany ? 10 : 16,
+                  maxWidth: isTon ? 1050 : isMany ? 750 : 550,
+                  margin: '0 auto',
+                  maxHeight: isMany ? 'calc(100vh - 280px)' : 'none',
+                  overflowY: isMany ? 'auto' : 'visible',
+                  overflowX: 'hidden',
+                  padding: isMany ? '4px 8px 4px 4px' : 0,
+                  scrollbarWidth: 'thin',
+                  scrollbarColor: 'rgba(204,15,16,0.3) transparent',
+                }}>
+                  {results.map((name, i) => {
+                    const isFirst = i === 0;
+                    const isTop3 = i < 3;
+                    const compact = isMany;
+
+                    return (
+                    <div key={i} style={{
+                      opacity: i <= revealIndex ? 1 : 0,
+                      transform: i <= revealIndex ? 'scale(1)' : 'scale(0.7)',
+                      transition: 'all 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
+                      ...(isFirst && !compact ? { gridColumn: isTon ? '1 / -1' : undefined } : {}),
+                    }}>
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: compact ? 10 : 16,
+                        padding: compact ? '10px 14px' : '16px 24px',
+                        borderRadius: compact ? 12 : 16,
+                        background: isFirst
+                          ? 'linear-gradient(135deg, rgba(204,15,16,0.18), rgba(221,143,26,0.12), rgba(15,5,5,0.9))'
+                          : 'linear-gradient(135deg, rgba(25,25,25,0.9), rgba(15,15,15,0.95))',
+                        border: isFirst ? '1px solid rgba(204,15,16,0.3)' : '1px solid rgba(255,255,255,0.06)',
+                        boxShadow: isFirst ? '0 0 40px rgba(204,15,16,0.15), inset 0 0 30px rgba(204,15,16,0.05)' : 'none',
+                      }}>
+                        {/* Rank badge */}
+                        <div style={{
+                          width: compact ? 40 : 56, height: compact ? 40 : 56,
+                          borderRadius: compact ? 10 : 14, flexShrink: 0,
+                          background: isFirst ? 'linear-gradient(135deg, #fbbf24, #d97706)'
+                            : i === 1 ? 'linear-gradient(135deg, #9ca3af, #6b7280)'
+                            : i === 2 ? 'linear-gradient(135deg, #d97706, #92400e)'
+                            : 'linear-gradient(135deg, #374151, #1f2937)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                          animation: i <= revealIndex ? 'rankBadgePop 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards' : 'none',
+                          animationDelay: '0.15s',
+                        }}>
+                          <span style={{
+                            fontFamily: 'Barlow, sans-serif', fontWeight: 900,
+                            fontSize: compact ? (isTop3 ? 13 : 12) : (isTop3 ? 18 : 16),
+                            color: '#fff',
+                          }}>
+                            {isTop3 ? ['1st','2nd','3rd'][i] : `${i+1}°`}
+                          </span>
+                        </div>
+
+                        {/* Name */}
+                        <div style={{ flex: 1, textAlign: 'left', minWidth: 0 }}>
+                          <p style={{
+                            fontFamily: 'Barlow, sans-serif', fontWeight: 900,
+                            fontSize: compact ? (isFirst ? 20 : 16) : (isFirst ? 32 : 24),
+                            color: '#fff', lineHeight: 1.1,
+                            textShadow: isFirst ? '0 0 30px rgba(204,15,16,0.3)' : 'none',
+                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                          }}>{name}</p>
+                          {!compact && (
+                            <p style={{
+                              fontFamily: 'Open Sans, sans-serif', fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 4,
+                            }}>de {names.length} participantes</p>
+                          )}
+                        </div>
+
+                        {/* Medal */}
+                        {isTop3 && (
+                          <span style={{
+                            fontSize: compact ? (isFirst ? 24 : 18) : (isFirst ? 40 : 30),
+                            flexShrink: 0,
+                            animation: isFirst ? 'trophyBounce 2s ease-in-out infinite' : 'none',
+                          }}>{rankEmojis[i]}</span>
+                        )}
+                      </div>
+                    </div>
+                    );
+                  })}
+                </div>
+
+                {/* Scroll hint when many results */}
+                {isMany && phase === 'done' && (
+                  <div style={{
+                    marginTop: 12, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6,
+                    animation: 'fadeInUp 0.5s ease both', animationDelay: '0.5s',
+                  }}>
+                    <span style={{ fontFamily: 'Barlow, sans-serif', fontSize: 11, color: 'rgba(255,255,255,0.2)', letterSpacing: '0.1em' }}>
+                      ↕ Role para ver todos os {results.length} vencedores
+                    </span>
+                  </div>
+                )}
+
+                {/* Actions — only after all revealed */}
+                {phase === 'done' && (
+                  <div style={{
+                    marginTop: 24, paddingBottom: 8,
+                    display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap',
+                    animation: 'fadeInUp 0.6s ease both', animationDelay: '0.3s',
+                  }}>
+                    <Button onClick={() => {
+                      setPhase('countdown');
+                      setCountVal(3);
+                      setResults(null);
+                      setRevealIndex(-1);
+                      setSlotNames([]);
+                      finalResultsRef.current = cryptoPickNames(names, count);
+                    }}>🎆 Sortear Novamente</Button>
+                    <CopyButton text={results.join('\n')} />
+                    <Button variant="secondary" onClick={onClose}>✕ Fechar</Button>
+                  </div>
+                )}
+              </>
+              );
+            })()}
+          </div>
+
+          {/* Bottom branding */}
+          <div style={{
+            position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)', zIndex: 110,
+            display: 'flex', alignItems: 'center', gap: 8, opacity: 0.25,
+          }}>
+            <DelpLogoMark size={18} />
+            <span style={{ fontFamily: 'Barlow, sans-serif', fontSize: 10, fontWeight: 600, color: '#fff', letterSpacing: '0.2em', textTransform: 'uppercase' }}>
+              Sorteador Delp
+            </span>
+          </div>
+        </div>
+      );
+    }
+
+    // ===================================================================
+    // SORTEIO DE NOMES — SECTION + FULLSCREEN TRIGGER
+    // ===================================================================
+    function NomesSorteio({ addEntry }) {
+      const [namesList, setNamesList] = useState('');
+      const [count, setCount] = useState(1);
+      const [prizeName, setPrizeName] = useState('');
+      const [lastResults, setLastResults] = useState(null);
+      const [lastPrize, setLastPrize] = useState('');
+      const [showFullscreen, setShowFullscreen] = useState(false);
+
+      const names = useMemo(() => namesList.split('\n').map(n => n.trim()).filter(Boolean), [namesList]);
+
+      const handleSort = () => {
+        if (names.length === 0) return;
+        setShowFullscreen(true);
+      };
+
+      const handleFullscreenClose = () => {
+        setShowFullscreen(false);
+      };
+
+      const handleAddEntry = useCallback((entry) => {
+        setLastResults(entry.result.split(', '));
+        setLastPrize(prizeName);
+        addEntry(entry);
+      }, [addEntry, prizeName]);
+
+      return (
+        <section className="relative py-20 md:py-28 px-4" id="nomes">
+          <div className="section-divider max-w-6xl mx-auto mb-20" />
+
+          {/* FULLSCREEN SORTEIO */}
+          {showFullscreen && (
+            <FullscreenSorteio
+              names={names}
+              count={count}
+              prizeName={prizeName}
+              onClose={handleFullscreenClose}
+              addEntry={handleAddEntry}
+            />
+          )}
+
+          <div className="max-w-6xl mx-auto relative z-10">
+            <SectionTitle icon="👤" subtitle="Cole a lista de participantes e sorteie os vencedores em tela cheia com fogos de artifício">
+              Sorteio de Nomes
+            </SectionTitle>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Left: Config */}
+              <div className="glass-card p-6 md:p-8 animate-fade-in-up">
+                <h3 className="font-barlow font-bold text-lg text-white mb-6 flex items-center gap-2">
+                  <span className="w-8 h-8 bg-delp-primary/20 rounded-lg flex items-center justify-center text-sm">📋</span>
+                  Participantes
+                </h3>
+                <div className="space-y-5">
+                  <TextAreaField label="Lista de nomes (um por linha)" id="names-list"
+                    value={namesList} onChange={e => setNamesList(e.target.value)}
+                    placeholder={"Maria Silva\nJoão Santos\nAna Oliveira\nPedro Costa\nLucas Ferreira\nJuliana Lima"} rows={8} />
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-500">{names.length} nome(s) cadastrado(s)</span>
+                    <span className="text-xs text-delp-primary font-barlow font-semibold px-3 py-1 bg-delp-primary/10 rounded-full">
+                      crypto.getRandomValues()
+                    </span>
+                  </div>
+                  <InputField label="Quantidade a sortear" id="names-count" value={count}
+                    onChange={e => setCount(Math.max(1, Number(e.target.value)))} min={1} />
+                  <div className="flex flex-col gap-2">
+                    <label htmlFor="prize-name" className="font-barlow font-semibold text-xs text-delp-secondary uppercase tracking-wider flex items-center gap-1.5">
+                      🎁 Nome do Prêmio <span className="text-gray-600 font-normal normal-case tracking-normal">(opcional)</span>
+                    </label>
+                    <input id="prize-name" type="text" value={prizeName} onChange={e => setPrizeName(e.target.value)}
+                      placeholder="Ex: TV 55 polegadas, Vale Presente R$500..."
+                      className="input-dark w-full px-4 py-3 text-base"
+                      style={{ borderColor: prizeName ? 'rgba(221,143,26,0.3)' : undefined, boxShadow: prizeName ? '0 0 15px rgba(221,143,26,0.08)' : undefined }} />
+                  </div>
+                  <Button onClick={handleSort} disabled={names.length === 0} className="w-full" size="lg">
+                    🎆 Sortear em Tela Cheia
+                  </Button>
+                </div>
+              </div>
+
+              {/* Right: Last Results / Idle */}
+              <div className="glass-card p-6 md:p-8 flex flex-col items-center justify-center min-h-[420px] animate-fade-in-up delay-200">
+                {lastResults ? (
+                  <div className="text-center w-full space-y-4">
+                    <div className="mb-2"><span className="text-4xl">🏆</span></div>
+                    <p className="font-barlow font-black text-xs text-delp-secondary uppercase tracking-[0.4em] mb-1">Último Resultado</p>
+                    {lastPrize && (
+                      <div className="mb-3 px-4 py-2 rounded-lg mx-auto inline-block" style={{ background: 'rgba(221,143,26,0.1)', border: '1px solid rgba(221,143,26,0.2)' }}>
+                        <span className="font-barlow font-bold text-sm text-delp-secondary">🎁 {lastPrize}</span>
+                      </div>
+                    )}
+                    {lastResults.map((name, i) => (
+                      <div key={i} className="glass-card-light p-4 border-l-4 border-delp-primary animate-fade-in-up"
+                        style={{ animationDelay: `${i * 100}ms` }}>
+                        <div className="flex items-center gap-3">
+                          <span className="font-barlow font-black text-xl text-transparent bg-clip-text bg-gradient-to-r from-delp-primary to-delp-secondary">{i + 1}°</span>
+                          <span className="font-barlow font-bold text-lg text-white">{name}</span>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="flex gap-3 mt-6 justify-center pt-2">
+                      <Button onClick={handleSort}>🎆 Sortear Novamente</Button>
+                      <CopyButton text={lastResults.join('\n')} />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <div className="w-28 h-28 mx-auto mb-5 rounded-2xl bg-gradient-to-br from-delp-primary/5 to-delp-secondary/5 border border-white/5 flex items-center justify-center relative overflow-hidden">
+                      <span className="text-5xl opacity-40">🎆</span>
+                      <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, transparent, rgba(204,15,16,0.05))', animation: 'gradientShift 4s ease infinite', backgroundSize: '200% 200%' }} />
+                    </div>
+                    <p className="font-barlow font-semibold text-gray-400 text-lg">Experiência em Tela Cheia</p>
+                    <p className="font-opensans text-gray-600 text-sm mt-2 max-w-xs mx-auto">Clique em sortear para abrir uma experiência imersiva com contagem regressiva e fogos de artifício</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    // ===================================================================
+    // SORTEIO DE EQUIPES
+    // ===================================================================
+    function EquipesSorteio({ addEntry }) {
+      const [participantsList, setParticipantsList] = useState('');
+      const [teamCount, setTeamCount] = useState(2);
+      const [teams, setTeams] = useState(null);
+      const [showCountdown, setShowCountdown] = useState(false);
+
+      const participants = useMemo(() => participantsList.split('\n').map(n => n.trim()).filter(Boolean), [participantsList]);
+
+      const runDivide = useCallback(() => {
+        if (participants.length < teamCount || teamCount < 2) return;
+        const result = cryptoDivideTeams(participants, teamCount);
+        setTeams(result);
+        launchConfetti();
+        addEntry({ type: 'Equipes', params: `${participants.length} → ${teamCount} equipes`, result: result.map((t, i) => `Eq${i+1}: ${t.join(', ')}`).join(' | ') });
+      }, [participants, teamCount, addEntry]);
+
+      const handleDivide = () => { setShowCountdown(true); };
+
+      const teamColors = [
+        { bg: 'bg-delp-primary/10', border: 'border-delp-primary', text: 'text-delp-primary' },
+        { bg: 'bg-delp-secondary/10', border: 'border-delp-secondary', text: 'text-delp-secondary' },
+        { bg: 'bg-blue-500/10', border: 'border-blue-500', text: 'text-blue-400' },
+        { bg: 'bg-green-500/10', border: 'border-green-500', text: 'text-green-400' },
+        { bg: 'bg-purple-500/10', border: 'border-purple-500', text: 'text-purple-400' },
+        { bg: 'bg-pink-500/10', border: 'border-pink-500', text: 'text-pink-400' },
+      ];
+
+      return (
+        <section className="relative py-20 md:py-28 px-4" id="equipes">
+          <div className="section-divider max-w-6xl mx-auto mb-20" />
+          {showCountdown && <CountdownOverlay onComplete={() => { setShowCountdown(false); runDivide(); }} label="Dividindo Equipes" />}
+
+          <div className="max-w-6xl mx-auto relative z-10">
+            <SectionTitle icon="⚡" subtitle="Distribua participantes em equipes de forma equilibrada e aleatória">
+              Sorteio de Equipes
+            </SectionTitle>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="glass-card p-6 md:p-8 animate-fade-in-up">
+                <h3 className="font-barlow font-bold text-lg text-white mb-6 flex items-center gap-2">
+                  <span className="w-8 h-8 bg-delp-primary/20 rounded-lg flex items-center justify-center text-sm">📋</span>
+                  Participantes
+                </h3>
+                <div className="space-y-5">
+                  <TextAreaField label="Lista (um por linha)" id="team-list"
+                    value={participantsList} onChange={e => setParticipantsList(e.target.value)}
+                    placeholder={"Ana\nBruno\nCarla\nDiego\nElena\nFelipe"} rows={8} />
+                  <p className="text-sm text-gray-500">{participants.length} participante(s)</p>
+                  <InputField label="Número de equipes" id="team-count" value={teamCount}
+                    onChange={e => setTeamCount(Math.max(2, Number(e.target.value)))} min={2} />
+                  <Button onClick={handleDivide} disabled={participants.length < teamCount || teamCount < 2} className="w-full" size="lg">
+                    ⚡ Dividir Equipes
+                  </Button>
+                </div>
+              </div>
+
+              <div className="lg:col-span-2">
+                {teams ? (
+                  <div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {teams.map((team, i) => {
+                        const color = teamColors[i % teamColors.length];
+                        return (
+                          <div key={i} className={`glass-card p-5 border-l-4 ${color.border} animate-fade-in-up`}
+                            style={{ animationDelay: `${i * 100}ms` }}>
+                            <h4 className={`font-barlow font-black text-lg ${color.text} mb-3 flex items-center gap-2`}>
+                              <span className={`w-7 h-7 rounded-lg ${color.bg} flex items-center justify-center text-xs font-black`}>{i + 1}</span>
+                              Equipe {i + 1}
+                            </h4>
+                            <ul className="space-y-2">
+                              {team.map((member, j) => (
+                                <li key={j} className="font-opensans text-gray-300 text-sm flex items-center gap-2">
+                                  <span className={`w-1.5 h-1.5 rounded-full ${color.bg.replace('/10', '')}`} style={{background: color.border.replace('border-', '').includes('delp') ? '#cc0f10' : undefined}} />
+                                  {member}
+                                </li>
+                              ))}
+                            </ul>
+                            <p className="text-xs text-gray-600 mt-3 font-barlow">{team.length} membro(s)</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="flex gap-3 mt-6 justify-center">
+                      <Button onClick={handleDivide}>🔄 Resorteiar</Button>
+                      <CopyButton text={teams.map((t, i) => `Equipe ${i+1}: ${t.join(', ')}`).join('\n')} />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="glass-card p-8 flex flex-col items-center justify-center min-h-[400px] animate-fade-in-up delay-200">
+                    <div className="w-24 h-24 mx-auto mb-4 rounded-2xl bg-white/5 flex items-center justify-center">
+                      <span className="text-4xl opacity-30">⚡</span>
+                    </div>
+                    <p className="text-gray-500">Cole os participantes e defina as equipes</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    // ===================================================================
+    // SPIN WHEEL (ROLETA)
+    // ===================================================================
+    // ===================================================================
+    // FULLSCREEN ROLETA ENGINE
+    // ===================================================================
+    function drawWheelCanvas(canvas, items, currentRotation, sizePx) {
+      if (!canvas || items.length === 0) return;
+      const ctx = canvas.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = sizePx * dpr;
+      canvas.height = sizePx * dpr;
+      ctx.scale(dpr, dpr);
+
+      const center = sizePx / 2;
+      const radius = center - 8;
+      const segAngle = (2 * Math.PI) / items.length;
+
+      ctx.clearRect(0, 0, sizePx, sizePx);
+
+      // Outer glow ring
+      ctx.beginPath();
+      ctx.arc(center, center, radius + 5, 0, 2 * Math.PI);
+      const outerGlow = ctx.createRadialGradient(center, center, radius - 2, center, center, radius + 8);
+      outerGlow.addColorStop(0, 'rgba(204,15,16,0.15)');
+      outerGlow.addColorStop(1, 'transparent');
+      ctx.fillStyle = outerGlow;
+      ctx.fill();
+
+      ctx.save();
+      ctx.translate(center, center);
+      ctx.rotate(currentRotation);
+
+      // Segments
+      items.forEach((item, i) => {
+        const startAngle = i * segAngle;
+        const endAngle = startAngle + segAngle;
+        const color = WHEEL_COLORS[i % WHEEL_COLORS.length];
+
+        // Segment fill
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.arc(0, 0, radius, startAngle, endAngle);
+        ctx.closePath();
+
+        // Gradient fill per segment
+        const midAngle = startAngle + segAngle / 2;
+        const gx = Math.cos(midAngle) * radius * 0.5;
+        const gy = Math.sin(midAngle) * radius * 0.5;
+        const segGrad = ctx.createRadialGradient(0, 0, radius * 0.1, gx, gy, radius);
+        segGrad.addColorStop(0, color);
+        segGrad.addColorStop(1, shadeColor(color, -25));
+        ctx.fillStyle = segGrad;
+        ctx.fill();
+
+        // Segment border
+        ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Inner accent line
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.arc(0, 0, radius, startAngle, endAngle);
+        ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // Text
+        ctx.save();
+        ctx.rotate(startAngle + segAngle / 2);
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = 'rgba(0,0,0,0.5)';
+        ctx.shadowBlur = 4;
+
+        const fontSize = Math.min(Math.max(14, Math.floor(280 / items.length)), 28);
+        ctx.font = `800 ${fontSize}px Barlow, sans-serif`;
+
+        let text = item;
+        const maxW = radius - 40;
+        if (ctx.measureText(text).width > maxW) {
+          while (ctx.measureText(text + '…').width > maxW && text.length > 0) text = text.slice(0, -1);
+          text += '…';
+        }
+        ctx.fillText(text, radius - 18, fontSize * 0.15);
+        ctx.shadowBlur = 0;
+        ctx.restore();
+      });
+
+      // Outer ring
+      ctx.beginPath();
+      ctx.arc(0, 0, radius, 0, 2 * Math.PI);
+      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // Tick marks
+      items.forEach((_, i) => {
+        const angle = i * segAngle;
+        ctx.save();
+        ctx.rotate(angle);
+        ctx.beginPath();
+        ctx.moveTo(radius - 10, 0);
+        ctx.lineTo(radius + 2, 0);
+        ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.restore();
+      });
+
+      // Center hub
+      ctx.beginPath();
+      ctx.arc(0, 0, 30, 0, 2 * Math.PI);
+      const hubGrad = ctx.createRadialGradient(0, 0, 2, 0, 0, 30);
+      hubGrad.addColorStop(0, '#444');
+      hubGrad.addColorStop(0.7, '#1a1a1a');
+      hubGrad.addColorStop(1, '#111');
+      ctx.fillStyle = hubGrad;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(204,15,16,0.4)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Inner ring detail
+      ctx.beginPath();
+      ctx.arc(0, 0, 22, 0, 2 * Math.PI);
+      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    function shadeColor(color, percent) {
+      const num = parseInt(color.replace('#', ''), 16);
+      const amt = Math.round(2.55 * percent);
+      const R = Math.max(0, Math.min(255, (num >> 16) + amt));
+      const G = Math.max(0, Math.min(255, (num >> 8 & 0x00FF) + amt));
+      const B = Math.max(0, Math.min(255, (num & 0x0000FF) + amt));
+      return `#${(0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1)}`;
+    }
+
+    // ===================================================================
+    // FULLSCREEN ROLETA
+    // ===================================================================
+    function FullscreenRoleta({ items, onClose, addEntry }) {
+      const canvasRef = useRef(null);
+      const [spinning, setSpinning] = useState(false);
+      const [rotation, setRotation] = useState(0);
+      const [winner, setWinner] = useState(null);
+      const [showResult, setShowResult] = useState(false);
+      const animRef = useRef(null);
+      const segmentAngle = (2 * Math.PI) / items.length;
+
+      // Responsive wheel size
+      const [wheelSize, setWheelSize] = useState(500);
+      useEffect(() => {
+        const calc = () => {
+          const vmin = Math.min(window.innerWidth, window.innerHeight);
+          setWheelSize(Math.min(Math.max(300, vmin - 180), 600));
+        };
+        calc();
+        window.addEventListener('resize', calc);
+        return () => window.removeEventListener('resize', calc);
+      }, []);
+
+      // Lock body scroll
+      useEffect(() => {
+        document.body.style.overflow = 'hidden';
+        return () => { document.body.style.overflow = ''; };
+      }, []);
+
+      // Draw wheel
+      useEffect(() => {
+        drawWheelCanvas(canvasRef.current, items, rotation, wheelSize);
+      }, [items, rotation, wheelSize]);
+
+      const spin = () => {
+        if (spinning) return;
+        setSpinning(true);
+        setWinner(null);
+        setShowResult(false);
+        const spinDuration = 4000 + cryptoRandomInt(0, 2500);
+        const totalRotation = (8 + cryptoRandomInt(0, 6)) * 2 * Math.PI + (cryptoRandomInt(0, 6283) / 1000);
+        const startTime = performance.now();
+        const startRotation = rotation;
+
+        const animate = (now) => {
+          const elapsed = now - startTime;
+          const progress = Math.min(elapsed / spinDuration, 1);
+          // Custom easing — dramatic slowdown at end
+          const eased = progress < 0.5
+            ? 2 * progress * progress
+            : 1 - Math.pow(-2 * progress + 2, 4) / 2;
+          const currentRotation = startRotation + totalRotation * eased;
+          setRotation(currentRotation);
+
+          if (progress < 1) {
+            animRef.current = requestAnimationFrame(animate);
+          } else {
+            setRotation(currentRotation);
+            setSpinning(false);
+            // Pointer is at top (3π/2). Local angle under pointer = 3π/2 - currentRotation
+            const pointerLocalAngle = ((3 * Math.PI / 2 - currentRotation) % (2 * Math.PI) + 4 * Math.PI) % (2 * Math.PI);
+            const winnerIndex = Math.floor(pointerLocalAngle / segmentAngle) % items.length;
+            setWinner(items[winnerIndex]);
+            addEntry({ type: 'Roleta', params: `${items.length} opções`, result: items[winnerIndex] });
+            // Delay result reveal for drama
+            setTimeout(() => {
+              setShowResult(true);
+              launchFireworks();
+              setTimeout(() => launchFireworks(), 800);
+            }, 300);
+          }
+        };
+        animRef.current = requestAnimationFrame(animate);
+      };
+
+      useEffect(() => () => cancelAnimationFrame(animRef.current), []);
+
+      return (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 100,
+          background: 'radial-gradient(ellipse at center, #0f0505 0%, #050000 50%, #000 100%)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          overflow: 'hidden',
+        }}>
+          {/* Grid bg */}
+          <div style={{
+            position: 'absolute', inset: 0, opacity: 0.03,
+            backgroundImage: 'linear-gradient(rgba(204,15,16,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(204,15,16,0.3) 1px, transparent 1px)',
+            backgroundSize: '60px 60px',
+          }} />
+
+          {/* Radial glow behind wheel */}
+          <div style={{
+            position: 'absolute', inset: 0, pointerEvents: 'none',
+            background: spinning
+              ? 'radial-gradient(circle at 50% 50%, rgba(204,15,16,0.12) 0%, transparent 50%)'
+              : showResult
+                ? 'radial-gradient(circle at 50% 50%, rgba(221,143,26,0.1) 0%, transparent 50%)'
+                : 'radial-gradient(circle at 50% 50%, rgba(204,15,16,0.05) 0%, transparent 40%)',
+            transition: 'all 0.5s',
+          }} />
+
+          {/* X Close */}
+          <button onClick={onClose} style={{
+            position: 'absolute', top: 24, right: 24, zIndex: 110,
+            width: 48, height: 48, borderRadius: 12,
+            background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+            color: 'rgba(255,255,255,0.5)', fontSize: 24, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'all 0.3s', fontFamily: 'Barlow, sans-serif',
+            backdropFilter: 'blur(10px)',
+          }}
+            onMouseOver={e => { e.target.style.background = 'rgba(204,15,16,0.2)'; e.target.style.color = '#fff'; }}
+            onMouseOut={e => { e.target.style.background = 'rgba(255,255,255,0.06)'; e.target.style.color = 'rgba(255,255,255,0.5)'; }}
+            aria-label="Fechar roleta">✕</button>
+
+          {/* Top Logo */}
+          <div style={{ position: 'absolute', top: 24, left: 24, zIndex: 110 }}>
+            <DelpLogoMark size={36} />
+          </div>
+
+          {/* Info badge */}
+          <div style={{
+            position: 'absolute', top: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 110,
+            padding: '6px 20px', borderRadius: 20,
+            background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+            fontFamily: 'Barlow, sans-serif', fontSize: 12, fontWeight: 600,
+            color: 'rgba(255,255,255,0.4)', letterSpacing: '0.15em', textTransform: 'uppercase',
+          }}>
+            🎯 Roleta · {items.length} opções
+          </div>
+
+          {/* === MAIN CONTENT === */}
+          <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+
+            {/* Pointer */}
+            <div style={{
+              filter: 'drop-shadow(0 4px 15px rgba(204,15,16,0.6))',
+              zIndex: 20, marginBottom: -6, position: 'relative',
+              animation: spinning ? 'none' : (showResult ? 'trophyBounce 0.6s ease' : 'none'),
+            }}>
+              <svg width="36" height="44" viewBox="0 0 30 36">
+                <defs>
+                  <linearGradient id="ptrGradFS" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#ff2a2b" />
+                    <stop offset="100%" stopColor="#cc0f10" />
+                  </linearGradient>
+                </defs>
+                <polygon points="15,36 0,0 30,0" fill="url(#ptrGradFS)" />
+              </svg>
+            </div>
+
+            {/* Canvas wheel */}
+            <canvas ref={canvasRef}
+              style={{
+                width: wheelSize, height: wheelSize,
+                filter: spinning ? 'drop-shadow(0 0 30px rgba(204,15,16,0.2))' : 'drop-shadow(0 0 40px rgba(204,15,16,0.15))',
+                transition: 'filter 0.5s',
+              }} />
+
+            {/* Logo in center overlay */}
+            <div style={{
+              position: 'absolute',
+              top: `calc(50% + 19px)`,
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              zIndex: 15, pointerEvents: 'none',
+            }}>
+              <DelpLogoMark size={36} spinning={spinning} />
+            </div>
+
+            {/* Spin button / Result */}
+            <div style={{ marginTop: 20, textAlign: 'center' }}>
+              {!showResult ? (
+                <Button onClick={spin} disabled={spinning} size="lg" className="px-16">
+                  {spinning ? '🌀 Girando...' : '🎯 Girar Roleta'}
+                </Button>
+              ) : (
+                <div style={{ animation: 'fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both' }}>
+                  {/* Winner card */}
+                  <div style={{
+                    padding: '20px 48px', borderRadius: 20, marginBottom: 20,
+                    background: 'linear-gradient(135deg, rgba(204,15,16,0.15), rgba(221,143,26,0.1), rgba(10,10,10,0.95))',
+                    border: '1px solid rgba(204,15,16,0.3)',
+                    boxShadow: '0 0 60px rgba(204,15,16,0.15), inset 0 0 40px rgba(204,15,16,0.05)',
+                    animation: 'winnerGlow 2.5s ease-in-out infinite',
+                    minWidth: 300,
+                  }}>
+                    <p style={{
+                      fontFamily: 'Barlow, sans-serif', fontWeight: 600, fontSize: 12,
+                      color: 'rgba(221,143,26,0.7)', letterSpacing: '0.4em', textTransform: 'uppercase', marginBottom: 8,
+                    }}>Resultado</p>
+                    <p style={{
+                      fontFamily: 'Barlow, sans-serif', fontWeight: 900,
+                      fontSize: winner && winner.length > 20 ? 28 : 40,
+                      color: '#fff', lineHeight: 1.1,
+                      textShadow: '0 0 40px rgba(204,15,16,0.4)',
+                    }}>🎉 {winner}</p>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
+                    <Button onClick={() => { setWinner(null); setShowResult(false); spin(); }}>🎯 Girar Novamente</Button>
+                    <CopyButton text={winner} />
+                    <Button variant="secondary" onClick={onClose}>✕ Fechar</Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Bottom branding */}
+          <div style={{
+            position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)', zIndex: 110,
+            display: 'flex', alignItems: 'center', gap: 8, opacity: 0.25,
+          }}>
+            <DelpLogoMark size={18} />
+            <span style={{ fontFamily: 'Barlow, sans-serif', fontSize: 10, fontWeight: 600, color: '#fff', letterSpacing: '0.2em', textTransform: 'uppercase' }}>
+              Sorteador Delp
+            </span>
+          </div>
+        </div>
+      );
+    }
+
+    // ===================================================================
+    // ROLETA SECTION + FULLSCREEN TRIGGER
+    // ===================================================================
+    function RoletaSorteio({ addEntry }) {
+      const [itemsList, setItemsList] = useState('');
+      const [showFullscreen, setShowFullscreen] = useState(false);
+      const [lastWinner, setLastWinner] = useState(null);
+      const items = useMemo(() => itemsList.split('\n').map(n => n.trim()).filter(Boolean), [itemsList]);
+
+      const handleAddEntry = useCallback((entry) => {
+        setLastWinner(entry.result);
+        addEntry(entry);
+      }, [addEntry]);
+
+      return (
+        <section className="relative py-20 md:py-28 px-4" id="roleta">
+          <div className="section-divider max-w-6xl mx-auto mb-20" />
+
+          {showFullscreen && items.length >= 2 && (
+            <FullscreenRoleta items={items} onClose={() => setShowFullscreen(false)} addEntry={handleAddEntry} />
+          )}
+
+          <div className="max-w-6xl mx-auto relative z-10">
+            <SectionTitle icon="🎯" subtitle="Monte a roleta com suas opções e gire em tela cheia">
+              Roleta Giratória
+            </SectionTitle>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+              <div className="glass-card p-6 md:p-8 animate-fade-in-up">
+                <h3 className="font-barlow font-bold text-lg text-white mb-6 flex items-center gap-2">
+                  <span className="w-8 h-8 bg-delp-primary/20 rounded-lg flex items-center justify-center text-sm">📝</span>
+                  Opções da Roleta
+                </h3>
+                <div className="space-y-5">
+                  <TextAreaField label="Lista de opções (uma por linha)" id="roleta-items"
+                    value={itemsList} onChange={e => setItemsList(e.target.value)}
+                    placeholder={"Prêmio 1\nPrêmio 2\nPrêmio 3\nPrêmio 4\nPrêmio 5\nPrêmio 6"} rows={10} />
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-500">{items.length} opção(ões)</span>
+                    {items.length > 0 && items.length < 2 && <span className="text-xs text-delp-primary">Mínimo 2 opções</span>}
+                  </div>
+                  <Button onClick={() => setShowFullscreen(true)} disabled={items.length < 2} className="w-full" size="lg">
+                    🎯 Abrir Roleta em Tela Cheia
+                  </Button>
+                </div>
+              </div>
+
+              <div className="glass-card p-6 md:p-8 flex flex-col items-center justify-center min-h-[500px] animate-fade-in-up delay-200">
+                {lastWinner ? (
+                  <div className="text-center w-full animate-fade-in-scale">
+                    <div className="mb-4"><span className="text-5xl">🎯</span></div>
+                    <p className="font-barlow font-black text-xs text-delp-secondary uppercase tracking-[0.4em] mb-4">Último Resultado</p>
+                    <div className="glass-card-light p-6 border-l-4 border-delp-primary">
+                      <p className="font-barlow font-black text-3xl text-transparent bg-clip-text bg-gradient-to-r from-delp-primary to-delp-secondary">
+                        🎉 {lastWinner}
+                      </p>
+                    </div>
+                    <div className="flex gap-3 mt-8 justify-center">
+                      <Button onClick={() => setShowFullscreen(true)}>🎯 Girar Novamente</Button>
+                      <CopyButton text={lastWinner} />
+                    </div>
+                  </div>
+                ) : items.length >= 2 ? (
+                  <div className="text-center">
+                    <div className="w-32 h-32 mx-auto mb-5 rounded-full bg-gradient-to-br from-delp-primary/5 to-delp-secondary/5 border border-white/5 flex items-center justify-center relative overflow-hidden">
+                      <span className="text-6xl opacity-40">🎯</span>
+                      <div className="absolute inset-0" style={{ background: 'conic-gradient(from 0deg, rgba(204,15,16,0.05), rgba(221,143,26,0.05), rgba(204,15,16,0.05))', animation: 'rotateLogo 8s linear infinite' }} />
+                    </div>
+                    <p className="font-barlow font-semibold text-gray-400 text-lg">Roleta em Tela Cheia</p>
+                    <p className="font-opensans text-gray-600 text-sm mt-2 max-w-xs mx-auto">Clique para abrir uma roleta imersiva com animação de giro e fogos de artifício</p>
+                    <Button onClick={() => setShowFullscreen(true)} className="mt-6">🎯 Abrir Roleta</Button>
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <div className="w-48 h-48 mx-auto rounded-full border-2 border-dashed border-white/10 flex items-center justify-center mb-6">
+                      <span className="text-5xl opacity-20">🎯</span>
+                    </div>
+                    <p className="text-gray-500">Adicione pelo menos 2 opções</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    // ===================================================================
+    // HISTORY PANEL
+    // ===================================================================
+    function HistoryPanel({ history, clearHistory, isOpen, onClose }) {
+      const typeIcons = { 'Números': '🎲', 'Nomes': '👤', 'Equipes': '⚡', 'Roleta': '🎯' };
+      const typeBorders = { 'Números': 'border-delp-primary', 'Nomes': 'border-delp-secondary', 'Equipes': 'border-blue-500', 'Roleta': 'border-purple-500' };
+
+      return (
+        <>
+          {isOpen && <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={onClose} />}
+          <aside className={`history-panel fixed top-0 right-0 h-full w-full sm:w-[420px] bg-delp-dark/95 backdrop-blur-xl z-50 flex flex-col border-l border-white/5 ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+            <div className="flex items-center justify-between px-6 py-5 border-b border-white/5">
+              <div>
+                <h2 className="font-barlow font-black text-xl text-white">Histórico</h2>
+                <p className="text-xs text-gray-500 mt-0.5">{history.length} sorteio(s) nesta sessão</p>
+              </div>
+              <div className="flex items-center gap-3">
+                {history.length > 0 && (
+                  <button onClick={clearHistory} className="text-xs text-gray-500 hover:text-delp-primary transition-colors cursor-pointer font-barlow font-semibold uppercase tracking-wider">Limpar</button>
+                )}
+                <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-all cursor-pointer text-lg">&times;</button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {history.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-center">
+                  <div className="w-20 h-20 rounded-2xl bg-white/5 flex items-center justify-center mb-4"><span className="text-3xl opacity-20">🕐</span></div>
+                  <p className="text-gray-500 text-sm">Nenhum sorteio nesta sessão</p>
+                </div>
+              ) : history.map((entry, i) => (
+                <div key={entry.id} className={`glass-card-light p-4 border-l-2 ${typeBorders[entry.type] || 'border-gray-500'} animate-fade-in-up`}
+                  style={{ animationDelay: `${i * 50}ms` }}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm">{typeIcons[entry.type]} <span className="font-barlow font-semibold text-xs text-gray-300 ml-1">{entry.type}</span></span>
+                    <span className="text-xs text-gray-600">{entry.timestamp}</span>
+                  </div>
+                  <p className="text-xs text-gray-500 mb-1">{entry.params}</p>
+                  <p className="font-barlow font-semibold text-sm text-white break-words">{entry.result}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="px-6 py-3 border-t border-white/5">
+              <p className="text-xs text-gray-600 text-center">Dados salvos apenas nesta sessão do navegador</p>
+            </div>
+          </aside>
+        </>
+      );
+    }
+
+    // ===================================================================
+    // FOOTER
+    // ===================================================================
+    function Footer() {
+      return (
+        <footer className="relative bg-delp-dark border-t border-white/5">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+              <div>
+                <DelpLogo light size="md" />
+                <p className="font-barlow text-gray-500 italic mt-4 text-lg">"{DELP_INFO.slogan}"</p>
+                <div className="flex gap-4 mt-6">
+                  {[
+                    { href: DELP_INFO.social.linkedin, label: 'LinkedIn', path: 'M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z' },
+                    { href: DELP_INFO.social.instagram, label: 'Instagram', path: 'M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z' },
+                    { href: DELP_INFO.social.facebook, label: 'Facebook', path: 'M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z' },
+                  ].map(s => (
+                    <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer" aria-label={s.label}
+                      className="w-10 h-10 rounded-lg bg-white/5 hover:bg-delp-primary/20 flex items-center justify-center text-gray-500 hover:text-white transition-all">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d={s.path}/></svg>
+                    </a>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h4 className="font-barlow font-bold text-white text-sm uppercase tracking-wider mb-4">Matriz — {DELP_INFO.headquarters.city}/{DELP_INFO.headquarters.state}</h4>
+                <div className="font-opensans text-gray-500 text-sm space-y-1.5">
+                  <p>{DELP_INFO.headquarters.address}</p>
+                  <p>{DELP_INFO.headquarters.city}/{DELP_INFO.headquarters.state} — CEP {DELP_INFO.headquarters.cep}</p>
+                  <p className="mt-3">Tel: {DELP_INFO.headquarters.phone}</p>
+                </div>
+              </div>
+              <div>
+                <h4 className="font-barlow font-bold text-white text-sm uppercase tracking-wider mb-4">Filial — {DELP_INFO.branch.city}/{DELP_INFO.branch.state}</h4>
+                <div className="font-opensans text-gray-500 text-sm space-y-1.5">
+                  <p>{DELP_INFO.branch.address}</p>
+                  <p>{DELP_INFO.branch.city}/{DELP_INFO.branch.state} — CEP {DELP_INFO.branch.cep}</p>
+                  <p className="mt-3">Tel: {DELP_INFO.branch.phone}</p>
+                </div>
+              </div>
+            </div>
+            <div className="border-t border-white/5 mt-12 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <p className="font-opensans text-gray-600 text-xs">{DELP_INFO.copyright}</p>
+              <p className="font-barlow text-gray-700 text-xs uppercase tracking-widest">Sorteador Delp — Ferramenta Interna</p>
+            </div>
+          </div>
+        </footer>
+      );
+    }
+
+    // ===================================================================
+    // APP
+    // ===================================================================
+    function App() {
+      const [activeTab, setActiveTab] = useState('numeros');
+      const [historyOpen, setHistoryOpen] = useState(false);
+      const [showHero, setShowHero] = useState(true);
+      const { history, addEntry, clearHistory } = useHistory();
+
+      const handleTabChange = (tab) => {
+        setActiveTab(tab);
+        setShowHero(false);
+        setTimeout(() => document.getElementById(tab)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+      };
+
+      return (
+        <div className="min-h-screen flex flex-col relative z-10">
+          <Header activeTab={activeTab} onTabChange={handleTabChange} onToggleHistory={() => setHistoryOpen(!historyOpen)} />
+          <main className="flex-1">
+            {showHero && <HeroSection onStart={() => { setShowHero(false); setTimeout(() => document.getElementById('numeros')?.scrollIntoView({ behavior: 'smooth' }), 100); }} />}
+            <NumerosSorteio addEntry={addEntry} />
+            <NomesSorteio addEntry={addEntry} />
+            <EquipesSorteio addEntry={addEntry} />
+            <RoletaSorteio addEntry={addEntry} />
+          </main>
+          <Footer />
+          <HistoryPanel history={history} clearHistory={clearHistory} isOpen={historyOpen} onClose={() => setHistoryOpen(false)} />
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
