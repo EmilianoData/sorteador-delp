@@ -2581,7 +2581,32 @@
             </div>
             <div className="border-t border-white/5 mt-12 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
               <p className="font-opensans text-gray-600 text-xs">{DELP_INFO.copyright}</p>
-              <p className="font-barlow text-gray-700 text-xs uppercase tracking-widest">Sorteador Delp — Ferramenta Interna</p>
+              <div className="flex items-center gap-3">
+                {/* NID Logo */}
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ background: 'rgba(204,15,16,0.08)', border: '1px solid rgba(204,15,16,0.15)' }}>
+                  <svg width="28" height="28" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    {/* Hexagon background */}
+                    <polygon points="50,5 93,27.5 93,72.5 50,95 7,72.5 7,27.5" fill="url(#nidGrad)" stroke="rgba(204,15,16,0.6)" strokeWidth="2"/>
+                    {/* NID text */}
+                    <text x="50" y="58" textAnchor="middle" fontFamily="'Barlow Condensed', sans-serif" fontWeight="900" fontSize="32" fill="white" letterSpacing="1">NID</text>
+                    {/* Subtle circuit lines */}
+                    <line x1="15" y1="35" x2="30" y2="35" stroke="rgba(255,255,255,0.15)" strokeWidth="1"/>
+                    <line x1="70" y1="65" x2="85" y2="65" stroke="rgba(255,255,255,0.15)" strokeWidth="1"/>
+                    <circle cx="30" cy="35" r="2" fill="rgba(204,15,16,0.4)"/>
+                    <circle cx="70" cy="65" r="2" fill="rgba(204,15,16,0.4)"/>
+                    <defs>
+                      <linearGradient id="nidGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="rgba(204,15,16,0.25)"/>
+                        <stop offset="100%" stopColor="rgba(150,10,10,0.35)"/>
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                  <div className="flex flex-col">
+                    <span className="font-barlow font-black text-[10px] text-white/70 uppercase tracking-[0.2em] leading-tight">Desenvolvido por</span>
+                    <span className="font-barlow font-black text-xs uppercase tracking-wider leading-tight" style={{ background: 'linear-gradient(135deg, #cc0f10, #dd8f1a)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Núcleo de Inovação Delp</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </footer>
