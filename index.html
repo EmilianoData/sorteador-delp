@@ -11,7 +11,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600;700;800;900&family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet" />
 
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tailwind Play CDN pinado em 3.4.x: a URL sem versao serve "latest" e, se pular para v4,
+       quebra a API tailwind.config usada abaixo. (Play CDN nao publica hash SRI estavel.) -->
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script>
     tailwind.config = {
       theme: {
@@ -43,12 +45,14 @@
     }
   </script>
 
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <!-- Versoes exatas + SRI (integrity): protege contra alteracao do conteudo na CDN.
+       Pin exato e obrigatorio para SRI — um range (@18) poderia mudar o arquivo e invalidar o hash. -->
+  <script crossorigin="anonymous" integrity="sha384-DGyLxAyjq0f9SPpVevD6IgztCFlnMF6oW/XQGmfe+IsZ8TqEiDrcHkMLKI6fiB/Z" src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+  <script crossorigin="anonymous" integrity="sha384-gTGxhz21lVGYNMcdJOyq01Edg0jhn/c22nsx0kyqP0TxaV5WVdsSH1fSDUf5YJj1" src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
   <!-- Babel pinado na linha 7.x: o Babel 8 mudou o default do preset React para o runtime "automatic",
        que emite import de "react/jsx-runtime" (irresolvivel sem bundler/import-map) e derruba o app.
        Manter pinado em 7.x preserva o runtime "classic" (React.createElement via React global do UMD). -->
-  <script src="https://unpkg.com/@babel/standalone@7.29.7/babel.min.js"></script>
+  <script crossorigin="anonymous" integrity="sha384-ezQ6HS3FLspd9te19o2McUV6FAK091+GG7KO54f/R8DKgCDi7fULhapNrd5LY+vG" src="https://unpkg.com/@babel/standalone@7.29.7/babel.min.js"></script>
 
   <style>
     :root {
