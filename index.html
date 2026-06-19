@@ -45,7 +45,10 @@
 
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Babel pinado na linha 7.x: o Babel 8 mudou o default do preset React para o runtime "automatic",
+       que emite import de "react/jsx-runtime" (irresolvivel sem bundler/import-map) e derruba o app.
+       Manter pinado em 7.x preserva o runtime "classic" (React.createElement via React global do UMD). -->
+  <script src="https://unpkg.com/@babel/standalone@7.29.7/babel.min.js"></script>
 
   <style>
     :root {
